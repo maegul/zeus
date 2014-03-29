@@ -1,0 +1,381 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb 15 16:06:22 2014
+
+@author: errollloyd
+"""
+import math
+import numpy as np
+import scipy as sp
+import scipy.stats as stats
+from scipy.ndimage import gaussian_filter1d
+
+
+
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+import os
+import glob
+
+def load(dir):
+    
+    """
+    Loads files from the directory provided.
+    
+    Loads only txt files.
+    
+    Sorts and assigns expecting a number of either markerss, spikess times and spikess shape.
+    
+    Returns a dictionary of the imported data types
+    """
+
+    current_dir = os.getcwd()    
+    
+    os.chdir(dir)
+    
+    files = glob.glob('*.txt')
+    
+    data = {}
+    
+    for f in files:
+        f_name = f.lower()
+        
+        if f_name.find('mark') > -1:
+            data['markers'] = np.loadtxt(f_name, skiprows=1)
+            
+        elif f_name.find('spike') > -1:
+            data['spikes'] = np.loadtxt(f_name, skiprows=1)
+            
+        elif f_name.find('shape') > -1:
+            data['shape'] = np.loadtxt(f_name, skiprows=1)
+            
+            
+    os.chdir(current_dir)
+
+            
+    if len(data.keys()) != len(files):
+        mesg = 'Not all of your file names are recognised; they may not have been imported appropriately'
+        mesg2 = 'File names must contain the key words "mark", "spike" and/or "shape"'
+        print mesg
+        print mesg2
+    
+    elif len(data.keys()) == len(files):
+        print 'All files imported and assigned'
+        return data
+        
+        
+
+
+def plotform(ax, tickint=False):
+    
+    from matplotlib.ticker import MultipleLocator
+
+    # remove top and right axes
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.xaxis.set_ticks_position('bottom')
+    ax.yaxis.set_ticks_position('left')
+    
+    # make ticks outward
+    ax.tick_params('both', direction='out')
+    
+    
+#    fontProperties = {'family':'sans-serif','sans-serif':['Helvetica'],
+#    'weight' : 'normal', 'size' : 12}
+    
+#    if tickint:
+#        p.set_xticklabels(p.get_xticks().astype('int'), fontProperties)
+#        p.set_yticklabels(p.get_yticks().astype('int'), fontProperties)
+#    else:
+#        p.set_xticklabels(p.get_xticks(), fontProperties)
+#        p.set_yticklabels(p.get_yticks(), fontProperties)
+        
+        
+    #set the style of the major and minor grid lines, filled blocks
+    ax.grid(True, 'major', color='w', linestyle='-', linewidth=1.4)
+    ax.grid(True, 'minor', color='0.92', linestyle='-', linewidth=0.7)
+    ax.patch.set_facecolor('0.85')
+    ax.set_axisbelow(True)
+    
+    #set minor tick spacing to 1/2 of the major ticks
+    ax.xaxis.set_minor_locator(MultipleLocator( (plt.xticks()[0][1]-plt.xticks()[0][0]) / 2.0 ))
+    ax.yaxis.set_minor_locator(MultipleLocator( (plt.yticks()[0][1]-plt.yticks()[0][0]) / 2.0 ))
+    
+    #remove axis border
+#    for child in ax.get_children():
+#        if isinstance(child, matplotlib.spines.Spine):
+#            child.set_alpha(0)
+       
+    #restyle the tick lines
+    for line in ax.get_xticklines() + ax.get_yticklines():
+        line.set_markersize(5)
+        line.set_color("gray")
+        line.set_markeredgewidth(1.4)
+    
+    #remove the minor tick lines    
+    for line in ax.xaxis.get_ticklines(minor=True) + ax.yaxis.get_ticklines(minor=True):
+        line.set_markersize(0)
+
+    
+    
+    if ax.legend_ <> None:
+        lg = ax.legend_
+        lg.get_frame().set_linewidth(0)
+        lg.get_frame().set_alpha(0.5)
+
+
+def steppify(arr, axis='x'):
+    """
+    expands datasets to create de factor step (step-post) plots
+    """
+    
+    if axis == 'x':
+        newarr = np.r_[arr[0], np.dstack((arr[1:], arr[1:])).flatten()]
+    
+    elif axis == 'y':
+        newarr = np.r_[np.dstack((arr[:-1], arr[:-1])).flatten(), arr[-1]]
+    
+    else:
+        print 'your axes in steppify are improperly identified'
+
+    return newarr
+
+
+
+## Class Definitions
+
+class Zeus:
+    
+    
+    
+    def __init__(self, dir):
+        
+        # Load files and assign to attributes
+        self.data = load(dir)
+        
+        try:
+            self.markers = self.data['markers']
+        except:
+            pass
+        
+        try:
+            self.spikes = self.data['spikes']
+        except:
+            pass
+
+        try:
+            self.shape = self.data['shape']
+        except:
+            pass
+
+        self.parameters = {}
+        self.parameters['directory'] = dir
+        
+        
+    def Sort(self, conditions = 9, trials = 10):
+        
+        
+        if self.markers.size != (conditions * trials):
+            print 'The number of recorded markers does not match your data specifications'
+            exit()
+        
+        self.parameters['conditions'] = conditions
+        self.parameters['trials'] = trials        
+        
+        # this should be a parameter while bin_width should be an attribute
+        # as it is arbitrary to the analysis
+        self.stim_len = np.max( np.subtract( self.markers[1:], self.markers[:-1]))
+        
+        
+        self.conditions_trials = {}
+        self.conditions_trials_zeroed = {}
+        
+        
+        for c in range(conditions):
+            
+            ct = [] # temp for condition_trials
+            ctz = [] # temp for condition_trials_zeroed
+            
+            for t in self.markers[c::conditions]:
+                
+                trial = np.extract( (self.spikes >= t) & (self.spikes < (t+self.stim_len)), 
+                                   self.spikes)
+                
+                ct.append(trial)
+                ctz.append( (trial - t))
+                
+                
+            self.conditions_trials[c] = ct
+            self.conditions_trials_zeroed[c] = ctz
+        
+    
+    
+    def Analyse(self, bin_width=0.02):
+        
+        self.parameters['bin_width'] = bin_width
+        
+        self.bins = np.arange(0, self.stim_len, bin_width)
+        
+        n_con = self.parameters['conditions']
+        n_trial = self.parameters['trials']
+        
+        self.conditions_trials_hist = np.zeros((n_con, n_trial, self.bins.size - 1))
+        
+        
+        for c in range(n_con):
+            
+            trials_hist = np.zeros((n_trial, self.bins.size - 1))
+            
+            for t in range(n_trial):
+                
+                trials_hist[t] = np.histogram(self.conditions_trials_zeroed[c][t], self.bins)[0]
+                
+            self.conditions_trials_hist[c] = trials_hist
+            
+            
+        self.conditions_hist_mean = np.mean( self.conditions_trials_hist, axis=1)
+        self.conditions_hist_stderr = stats.sem(self.conditions_trials_hist, axis= 1, ddof=0)
+     
+
+
+
+    def PSTH(self, figsize=(15, 8), format=True, plot_type = 'hist', 
+             frequency = True, density = False, sigma = 3, mov_avg = False,
+             mov_avg_window = 3):
+
+
+        n_con = self.parameters['conditions']
+        bin_width = (self.bins[1]-self.bins[0])
+        
+        cols = 3
+        rows = math.trunc(n_con/3.) + (n_con%3.)        
+        
+                
+        fig = plt.figure(figsize = figsize)
+
+                 
+        if plot_type == 'hist':
+            
+            for c in range(n_con):
+                ax = fig.add_subplot(rows, cols, c+1)
+                
+                ax.set_ylim(0, self.conditions_hist_mean.max() * 1.14)       
+                ax.set_xlim(0, self.bins[-1])            
+                
+                ax.bar(self.bins[:-1], self.conditions_hist_mean[c], 
+                       width=bin_width, color = '0.3', edgecolor = '0.28', 
+                       linewidth=0, zorder=2)
+                
+
+                if density:
+                    
+                    ### add simply moving average (which can have std err too)
+                    
+                    # Density function ... should be done across the whole
+                    # data set in .Analyse()
+                           
+                    spd = gaussian_filter1d(self.conditions_hist_mean[c], sigma)
+                    
+                    
+                    ax.plot(self.bins[:-1] + 0.5*bin_width, spd, 
+                            linestyle='-', color='FireBrick', linewidth=4, alpha=0.8, 
+                            zorder=3)
+                    
+            # convert ylabl to frequency units
+                    
+                if frequency:
+                    freq_label = np.round(ax.get_yticks() * (1 / bin_width), 
+                                          decimals=1)
+                    ax.set_yticklabels( freq_label)
+                
+                    # ylabel for all left most subplots
+                for sub_plt in np.arange(1, rows*cols, cols):
+                    if sub_plt == (c+1):
+                        if frequency:
+                            ax.set_ylabel('Frequency')
+                        else:
+                            ax.set_ylabel('Average count')
+                
+                plotform(ax)
+
+
+
+        elif plot_type == 'line':
+            
+            for c in range(n_con):
+                
+                pos_stderr = self.conditions_hist_mean + 2*self.conditions_hist_stderr
+                neg_stderr = self.conditions_hist_mean - 2*self.conditions_hist_stderr
+    
+                ax = fig.add_subplot(rows, cols, c+1)
+                
+                ax.set_ylim(0, pos_stderr.max() * 1.14)       
+                ax.set_xlim(0, self.bins[-1])            
+                
+                
+                ax.plot(self.bins[:-1] + 0.5*bin_width, self.conditions_hist_mean[c],
+                        color='0.28', linewidth=1)
+    
+                ax.fill_between(self.bins[:-1] + 0.5*bin_width, 
+                                pos_stderr[c], 
+                                neg_stderr[c],
+                                color='0.6', alpha=0.6)
+                
+    
+    
+                if density:
+                    
+                    ### add simply moving average (which can have std err too)
+                    
+                    # Density function ... should be done across the whole
+                    # data set in .Analyse()
+                           
+                    spd = gaussian_filter1d(self.conditions_hist_mean[c], sigma)
+                    
+                    
+                    ax.plot(self.bins[:-1] + 0.5*bin_width, spd, 
+                            linestyle='-', color='FireBrick', linewidth=3, alpha=0.8, 
+                            zorder=3)
+    
+    
+                    
+                # convert ylabl to frequency units
+                        
+                if frequency:
+                    freq_label = np.round(ax.get_yticks() * (1 / bin_width), 
+                                          decimals=1)
+                    ax.set_yticklabels( freq_label)
+                
+                    # ylabel for all left most subplots
+                for sub_plt in np.arange(1, rows*cols, cols):
+                    if sub_plt == (c+1):
+                        if frequency:
+                            ax.set_ylabel('Frequency')
+                        else:
+                            ax.set_ylabel('Average count')
+                
+
+                plotform(ax)
+
+    def PSTH_flat(self, sigma=5, figsize = (15, 8)):
+        gaus_filt = sp.ndimage.gaussian_filter1d
+        all_resp = gaus_filt(self.conditions_hist_mean.flatten(), sigma)
+        
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(1, 1, 1)
+        
+        ax.plot(all_resp, linestyle='-', color='0.28')
+        
+        n_con = self.parameters['conditions']
+        con_mark = np.arange(0, (self.bins.size -1) * n_con, self.bins.size -1)
+        
+        ax.xaxis.set_ticks(con_mark)
+        ax.xaxis.set_ticklabels(np.arange(n_con).astype('str'))
+        ax.set_xlim(0, (self.bins.size -1) * n_con)
+        
+        plotform(ax)
+        
+     # Do all conditions side by side with a small filter
+             
+            
