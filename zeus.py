@@ -35,7 +35,7 @@ def load(dir):
     os.chdir(dir)
     
     files = glob.glob('*.txt')
-    
+    file_names = []
     data = {}
     
     for f in files:
@@ -43,12 +43,15 @@ def load(dir):
         
         if f_name.find('mark') > -1:
             data['markers'] = np.loadtxt(f_name, skiprows=1)
+            file_names.append(f)
             
         elif f_name.find('spike') > -1:
             data['spikes'] = np.loadtxt(f_name, skiprows=1)
+            file_names.append(f)
             
         elif f_name.find('shape') > -1:
             data['shape'] = np.loadtxt(f_name, skiprows=1)
+            file_names.append(f)
             
             
     os.chdir(current_dir)
@@ -59,10 +62,17 @@ def load(dir):
         mesg2 = 'File names must contain the key words "mark", "spike" and/or "shape"'
         print mesg
         print mesg2
+        print '\nFollowing files loaded successfully:\n'
+        for i in file_names: print(i)
+
     
     elif len(data.keys()) == len(files):
         print 'All files imported and assigned'
+        print '\nFollowing files loaded successfully:\n'
+        for i in file_names: print(i)
         return data
+        
+    
         
         
 
@@ -123,6 +133,8 @@ def plotform(ax, tickint=False):
         lg = ax.legend_
         lg.get_frame().set_linewidth(0)
         lg.get_frame().set_alpha(0.5)
+        
+    plt.tight_layout()
 
 
 def steppify(arr, axis='x'):
@@ -173,7 +185,7 @@ class Zeus:
         self.parameters['directory'] = dir
         
         
-    def Sort(self, conditions = 9, trials = 10):
+    def _sort(self, conditions = 9, trials = 10):
         
         
         if self.markers.size != (conditions * trials):
@@ -211,7 +223,7 @@ class Zeus:
         
     
     
-    def Analyse(self, bin_width=0.02):
+    def _analyse(self, bin_width=0.02):
         
         self.parameters['bin_width'] = bin_width
         
@@ -239,8 +251,40 @@ class Zeus:
      
 
 
+    def _conditions(self, type='orientation', stim='bar', input='bounds', unit='deg',
+                    beg=-90, intvl=20, list=[]):
+                        
+        
+        n_con = self.parameters['conditions']
+        
+        self.parameters['condition_type'] = type
+        self.parameters['condition_unit'] = unit.capitalize()
+        
+        def circ(ori):
+            ori[ori<0] += 360
+            ori[ori>360] -= 360
+            ori[ori>720] -= 720
+            return ori
 
-    def PSTH(self, figsize=(15, 8), format=True, plot_type = 'hist', 
+        
+        if type.lower() == 'orientation':
+            
+            self.con = circ(np.arange(beg, beg+(n_con*intvl), intvl))
+            self.con2 = circ(self.con + 180)
+            
+            
+            
+            
+            
+            
+
+           
+        
+        
+        
+        
+
+    def _psth(self, figsize=(15, 8), format=True, plot_type = 'hist', 
              frequency = True, density = False, sigma = 3, mov_avg = False,
              mov_avg_window = 3):
 
@@ -255,7 +299,7 @@ class Zeus:
         fig = plt.figure(figsize = figsize)
 
                  
-        if plot_type == 'hist':
+        if plot_type.lower() == 'hist':
             
             # stepping the dataset for a fill_between plot by stacking and 
             # flattening to double up the values and bin boundaries
@@ -276,6 +320,9 @@ class Zeus:
                 
                 ax.fill_between(step_bins, step_hist_mean[c], lw=0, 
                                 facecolor='0.3', zorder=2)
+                                
+                ax.set_title('%s / %s %s' %(self.con[c], self.con2[c],
+                                            self.parameters['condition_unit']))
                 
                 
 
@@ -312,7 +359,7 @@ class Zeus:
 
 
 
-        elif plot_type == 'line':
+        elif plot_type.lower() == 'line':
             
             for c in range(n_con):
                 
@@ -369,7 +416,7 @@ class Zeus:
 
                 plotform(ax)
 
-    def PSTH_flat(self, sigma=5, figsize = (15, 8)):
+    def _psth_flat(self, sigma=5, figsize = (15, 8)):
         # Do all conditions side by side with a small filter
     
         gaus_filt = sp.ndimage.gaussian_filter1d
@@ -390,8 +437,8 @@ class Zeus:
         plotform(ax)
         
         
-    def SDF(self, frequency = True, conf_int = True, conf_int_type = 'boostrap', 
-            sigma=3, alpha=0.05, n_bootstrap=2000, figsize=(15, 8)):
+    def _sdf(self, frequency = True, conf_int = True, conf_int_type = 'boostrap', 
+            sigma=3, alpha=0.05, n_bootstrap=2000, plot=True, figsize=(15, 8)):
         """
         Generate a Spike Density Function (SDF) for the data set using 
         a smoothened form of the PSTH and confidence intervals derived from
@@ -424,49 +471,50 @@ class Zeus:
         
         # find percentile values for each bin along the bootstrap resamples,
         # which are on axis 1                                              
-        CI_pos = np.percentile(trials_bootstrap_filt, 100*(1 - (alpha/2.)), 
+        self.CI_pos = np.percentile(trials_bootstrap_filt, 100*(1 - (alpha/2.)), 
                                axis=1)
-        CI_neg = np.percentile(trials_bootstrap_filt, 100*(alpha/2.), 
+        self.CI_neg = np.percentile(trials_bootstrap_filt, 100*(alpha/2.), 
                                axis=1)
                                
         # the spike density function (smoothed PSTH)                       
-        SDF = sp.ndimage.convolve1d(self.conditions_hist_mean, kernel, axis=1)
+        self.spike_dens_func = sp.ndimage.convolve1d(self.conditions_hist_mean, 
+                                                     kernel, axis=1)
                                
-        
-        # plotting                       
-        cols = 3
-        rows = math.trunc(n_con/3.) + (n_con%3.)        
-        
-        fig = plt.figure(figsize = figsize)
-        
-        for c in range(n_con):
-            ax = fig.add_subplot(rows, cols, c+1)
+        # Plotting
+        if plot:
+            cols = 3
+            rows = math.trunc(n_con/3.) + (n_con%3.)        
             
-            ax.set_ylim(0, CI_pos.max() * 1.14)       
-            ax.set_xlim(0, self.bins[-1])            
+            fig = plt.figure(figsize = figsize)
             
-            
-            ax.plot(self.bins[:-1] + 0.5*bin_width, SDF[c], lw=2, 
-                    color='#036eb6', zorder=1)
-
-            ax.fill_between(self.bins[:-1] + 0.5*bin_width, 
-                            CI_neg[c], CI_pos[c],
-                            color='#036eb6', alpha=0.3)
-                            
-            if frequency:
-                freq_label = np.round(ax.get_yticks() * (1 / bin_width), 
-                                          decimals=1)
-                ax.set_yticklabels( freq_label)
+            for c in range(n_con):
+                ax = fig.add_subplot(rows, cols, c+1)
                 
-            for sub_plt in np.arange(1, rows*cols, cols):
-                if sub_plt == (c+1):
-                    if frequency:
-                        ax.set_ylabel('Frequency')
-                    else:
-                        ax.set_ylabel('Average count')
-
-            
-            plotform(ax)
+                ax.set_ylim(0, self.CI_pos.max() * 1.14)       
+                ax.set_xlim(0, self.bins[-1])            
+                
+                
+                ax.plot(self.bins[:-1] + 0.5*bin_width, self.spike_dens_func[c],
+                        lw=2, color='#036eb6', zorder=1)
+    
+                ax.fill_between(self.bins[:-1] + 0.5*bin_width, 
+                                self.CI_neg[c], self.CI_pos[c],
+                                color='#036eb6', alpha=0.3)
+                                
+                if frequency:
+                    freq_label = np.round(ax.get_yticks() * (1 / bin_width), 
+                                              decimals=1)
+                    ax.set_yticklabels( freq_label)
+                    
+                for sub_plt in np.arange(1, rows*cols, cols):
+                    if sub_plt == (c+1):
+                        if frequency:
+                            ax.set_ylabel('Frequency')
+                        else:
+                            ax.set_ylabel('Average count')
+    
+                
+                plotform(ax)
             
 
         
