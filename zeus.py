@@ -234,7 +234,7 @@ class Zeus:
             self.conditions_trials_hist[c] = trials_hist
             
             
-        self.conditions_hist_mean = np.mean( self.conditions_trials_hist, axis=1)
+        self.conditions_hist_mean = np.mean(self.conditions_trials_hist, axis=1)
         self.conditions_hist_stderr = stats.sem(self.conditions_trials_hist, axis= 1, ddof=0)
      
 
@@ -257,15 +257,26 @@ class Zeus:
                  
         if plot_type == 'hist':
             
+            # stepping the dataset for a fill_between plot by stacking and 
+            # flattening to double up the values and bin boundaries
+            # this is substantially faster than the bar plot for dataset this
+            # large
+            
+            step_bins = np.column_stack((self.bins, self.bins)).flatten()[1:-1]
+            step_hist_mean = np.column_stack((self.conditions_hist_mean.flatten(),
+                                              self.conditions_hist_mean.flatten()))
+            step_hist_mean = step_hist_mean.flatten()
+            step_hist_mean = step_hist_mean.reshape((n_con, (self.bins.size-1)*2))
+            
             for c in range(n_con):
                 ax = fig.add_subplot(rows, cols, c+1)
                 
                 ax.set_ylim(0, self.conditions_hist_mean.max() * 1.14)       
-                ax.set_xlim(0, self.bins[-1])            
+                ax.set_xlim(0, self.bins[-1])
                 
-                ax.bar(self.bins[:-1], self.conditions_hist_mean[c], 
-                       width=bin_width, color = '0.3', edgecolor = '0.28', 
-                       linewidth=0, zorder=2)
+                ax.fill_between(step_bins, step_hist_mean[c], lw=0, 
+                                facecolor='0.3', zorder=2)
+                
                 
 
                 if density:
@@ -359,6 +370,8 @@ class Zeus:
                 plotform(ax)
 
     def PSTH_flat(self, sigma=5, figsize = (15, 8)):
+        # Do all conditions side by side with a small filter
+    
         gaus_filt = sp.ndimage.gaussian_filter1d
         all_resp = gaus_filt(self.conditions_hist_mean.flatten(), sigma)
         
@@ -376,6 +389,87 @@ class Zeus:
         
         plotform(ax)
         
-     # Do all conditions side by side with a small filter
-             
+        
+    def SDF(self, frequency = True, conf_int = True, conf_int_type = 'boostrap', 
+            sigma=3, alpha=0.05, n_bootstrap=2000, figsize=(15, 8)):
+        """
+        Generate a Spike Density Function (SDF) for the data set using 
+        a smoothened form of the PSTH and confidence intervals derived from
+        bootstrapping
+        """
+        
+        n_trials = self.parameters['trials']
+        n_con = self.parameters['conditions']
+        bin_width = self.parameters['bin_width']
+        
+        # make the kernel 5 sigmas wide in each direction
+        kernel = stats.norm.pdf(np.arange(-5*sigma, (5*sigma)+1), scale=sigma)
+        
+        bootstrap_index = np.random.randint(0, n_trials, 
+                                            (n_trials, n_bootstrap) )
+        
+        # For each bin in the histogram, randomly samples from the results
+        # of each trial and repeats, effectively, n_bootstrap times                
+        trials_bootstrap = self.conditions_trials_hist[:, bootstrap_index, :]
+        
+        # dimension one is the trials, zero is the conditions; this averaging 
+        # goes across the trials creating a PSTH for each condition, and,
+        # importantly, for each bootstrap resample
+        PSTH_bootstrap = trials_bootstrap.mean(axis=1)
+        
+        # smoothing along the bins (ie, a SDF), where dimension zero is the
+        # conditions, one the bootstrap resamples and two the bins
+        trials_bootstrap_filt = sp.ndimage.convolve1d(PSTH_bootstrap, kernel, 
+                                                      axis = 2)
+        
+        # find percentile values for each bin along the bootstrap resamples,
+        # which are on axis 1                                              
+        CI_pos = np.percentile(trials_bootstrap_filt, 100*(1 - (alpha/2.)), 
+                               axis=1)
+        CI_neg = np.percentile(trials_bootstrap_filt, 100*(alpha/2.), 
+                               axis=1)
+                               
+        # the spike density function (smoothed PSTH)                       
+        SDF = sp.ndimage.convolve1d(self.conditions_hist_mean, kernel, axis=1)
+                               
+        
+        # plotting                       
+        cols = 3
+        rows = math.trunc(n_con/3.) + (n_con%3.)        
+        
+        fig = plt.figure(figsize = figsize)
+        
+        for c in range(n_con):
+            ax = fig.add_subplot(rows, cols, c+1)
             
+            ax.set_ylim(0, CI_pos.max() * 1.14)       
+            ax.set_xlim(0, self.bins[-1])            
+            
+            
+            ax.plot(self.bins[:-1] + 0.5*bin_width, SDF[c], lw=2, 
+                    color='#036eb6', zorder=1)
+
+            ax.fill_between(self.bins[:-1] + 0.5*bin_width, 
+                            CI_neg[c], CI_pos[c],
+                            color='#036eb6', alpha=0.3)
+                            
+            if frequency:
+                freq_label = np.round(ax.get_yticks() * (1 / bin_width), 
+                                          decimals=1)
+                ax.set_yticklabels( freq_label)
+                
+            for sub_plt in np.arange(1, rows*cols, cols):
+                if sub_plt == (c+1):
+                    if frequency:
+                        ax.set_ylabel('Frequency')
+                    else:
+                        ax.set_ylabel('Average count')
+
+            
+            plotform(ax)
+            
+
+        
+        
+        
+        
