@@ -14,6 +14,7 @@ from scipy.ndimage import gaussian_filter1d
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.ticker import MultipleLocator
 
 import os
 import glob
@@ -79,7 +80,7 @@ def load(dir):
 
 def plotform(ax, tickint=False):
     
-    from matplotlib.ticker import MultipleLocator
+
 
     # remove top and right axes
     ax.spines['right'].set_visible(False)
@@ -197,7 +198,8 @@ class Zeus:
         
         # this should be a parameter while bin_width should be an attribute
         # as it is arbitrary to the analysis
-        self.stim_len = np.max( np.subtract( self.markers[1:], self.markers[:-1]))
+        stim_len = np.max( np.subtract( self.markers[1:], self.markers[:-1]))
+        self.parameters['stimulus_length'] = stim_len
         
         
         self.conditions_trials = {}
@@ -211,7 +213,7 @@ class Zeus:
             
             for t in self.markers[c::conditions]:
                 
-                trial = np.extract( (self.spikes >= t) & (self.spikes < (t+self.stim_len)), 
+                trial = np.extract( (self.spikes >= t) & (self.spikes < (t+stim_len)), 
                                    self.spikes)
                 
                 ct.append(trial)
@@ -225,9 +227,11 @@ class Zeus:
     
     def _analyse(self, bin_width=0.02):
         
-        self.parameters['bin_width'] = bin_width
+        self.bin_width = bin_width
         
-        self.bins = np.arange(0, self.stim_len, bin_width)
+        stim_len = self.parameters['stimulus_length']
+        
+        self.bins = np.arange(0, stim_len, bin_width)
         
         n_con = self.parameters['conditions']
         n_trial = self.parameters['trials']
@@ -251,14 +255,20 @@ class Zeus:
      
 
 
-    def _conditions(self, type='orientation', stim='bar', input='bounds', unit='deg',
-                    beg=-90, intvl=20, list=[]):
+    def _conditions(self, beg=-90, intvl=20, type='orientation', stim='bar', 
+                    biphasic=True, unit='deg', input='bounds', list=[]):
                         
+        con_types = ['orientation', 'spat_freq', 'temporal_freq']
         
         n_con = self.parameters['conditions']
         
         self.parameters['condition_type'] = type
         self.parameters['condition_unit'] = unit.capitalize()
+        self.parameters['stimulus'] = stim
+        self.parameters['biphasic'] = biphasic
+        
+        self.con_label = []
+
         
         def circ(ori):
             ori[ori<0] += 360
@@ -267,19 +277,37 @@ class Zeus:
             return ori
 
         
-        if type.lower() == 'orientation':
+        if type.lower() == con_types[0]:
             
-            self.con = circ(np.arange(beg, beg+(n_con*intvl), intvl))
-            self.con2 = circ(self.con + 180)
-            
-            
-            
-            
-            
-            
+            if biphasic:
+                
+                self.con = circ(np.arange(beg, beg+(n_con*intvl), intvl))
+                self.con2 = circ(self.con + 180)
 
-           
-        
+                for c in range(n_con):
+                    label = '%s / %s %s' %(self.con[c], self.con2[c],
+                                           self.parameters['condition_unit'])
+                    self.con_label.append(label)
+                    
+            else:
+                self.con = circ(np.arange(beg, beg+(n_con*intvl), intvl))
+                
+                for c in range(n_con):
+                    label = '%s %s' %(self.con[c],
+                                      self.parameters['condition_unit'])
+                    self.con_label.append(label)
+                    
+                    
+        if not type.lower() in con_types:
+            
+            self.con = np.arange(beg, beg+(n_con*intvl), intvl)
+            
+            for c in range(n_con):
+                
+                label = '%s %s' %(self.con[c],
+                                  self.parameters['condition_unit'])
+                self.con_label.append(label)
+
         
         
         
@@ -290,7 +318,7 @@ class Zeus:
 
 
         n_con = self.parameters['conditions']
-        bin_width = (self.bins[1]-self.bins[0])
+        bin_width = self.bin_width
         
         cols = 3
         rows = math.trunc(n_con/3.) + (n_con%3.)        
@@ -321,8 +349,7 @@ class Zeus:
                 ax.fill_between(step_bins, step_hist_mean[c], lw=0, 
                                 facecolor='0.3', zorder=2)
                                 
-                ax.set_title('%s / %s %s' %(self.con[c], self.con2[c],
-                                            self.parameters['condition_unit']))
+                ax.set_title(self.con_label[c])
                 
                 
 
@@ -379,6 +406,8 @@ class Zeus:
                                 pos_stderr[c], 
                                 neg_stderr[c],
                                 color='0.6', alpha=0.6)
+                                
+                ax.set_title(self.con_label[c])
                 
     
     
@@ -429,9 +458,13 @@ class Zeus:
         
         n_con = self.parameters['conditions']
         con_mark = np.arange(0, (self.bins.size -1) * n_con, self.bins.size -1)
-        
+                
         ax.xaxis.set_ticks(con_mark)
-        ax.xaxis.set_ticklabels(np.arange(n_con).astype('str'))
+        ax.xaxis.set_ticklabels(self.con_label)
+        
+        for label in ax.xaxis.get_majorticklabels():
+            label.set_horizontalalignment('left')
+            
         ax.set_xlim(0, (self.bins.size -1) * n_con)
         
         plotform(ax)
@@ -447,7 +480,7 @@ class Zeus:
         
         n_trials = self.parameters['trials']
         n_con = self.parameters['conditions']
-        bin_width = self.parameters['bin_width']
+        bin_width = self.bin_width
         
         # make the kernel 5 sigmas wide in each direction
         kernel = stats.norm.pdf(np.arange(-5*sigma, (5*sigma)+1), scale=sigma)
@@ -501,6 +534,8 @@ class Zeus:
                                 self.CI_neg[c], self.CI_pos[c],
                                 color='#036eb6', alpha=0.3)
                                 
+                ax.set_title(self.con_label[c])
+                                
                 if frequency:
                     freq_label = np.round(ax.get_yticks() * (1 / bin_width), 
                                               decimals=1)
@@ -516,8 +551,38 @@ class Zeus:
                 
                 plotform(ax)
             
+    
+    def _tuning(self, ori_linear=False, source='sdf'):
+        
+        n_con = self.parameters['conditions']
+        
+        if source.lower() == 'sdf':
+            if self.parameters['condition_type'] == 'orientation':
+                if self.parameters['biphasic']:
+                    
+                    half = self.bins.size/2
 
-        
-        
+                    max_val_arg = (self.spike_dens_func[:, :half].argmax(axis=1),
+                                   self.spike_dens_func[:, half:].argmax(axis=1)+half)
+                                        
+                    max_val = (self.spike_dens_func[:, :half].max(axis=1),
+                               self.spike_dens_func[:, half:].max(axis=1))
+                               
+                                   
+                    max_val_CI_neg = (self.CI_neg[np.arange(n_con), max_val_arg[0]],
+                                      self.CI_neg[np.arange(n_con), max_val_arg[1]])
+                                      
+                    max_val_CI_pos = (self.CI_pos[np.arange(n_con), max_val_arg[0]],
+                                      self.CI_pos[np.arange(n_con), max_val_arg[1]])
+                                      
+                    self.con_tuning = np.vstack((np.hstack((self.con, self.con2)),
+                                                 np.hstack(max_val),
+                                                 np.hstack(max_val_CI_neg),
+                                                 np.hstack(max_val_CI_pos)))
+                                  
+                    self.con_tuning = self.con_tuning[:,self.con_tuning[0].argsort()]
+            
+                
+                
         
         
