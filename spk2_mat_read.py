@@ -1,3 +1,7 @@
+'''
+Objects for reading HDF5 (matlab >7.3) data files containing spike2 raw data
+
+'''
 # interval == sampling interval time
 # length == number of samples
 # start == ? ... perhaps a start time to synchronise other channels with different samples rates ...?
@@ -164,18 +168,90 @@ class spk2MatRead:
 	'''
 	Read mat (HDF5) data formats exported from spike 2
 
-	PRESUMES - data file has only trace and marker data, perhaps two traces
+	Object contains all relevant data, or has methods to accessing (larger) data
+	from the HDF5 file.
+
+	PRESUMES - data file has only trace and marker data.
+
+	Currently, taking out templated spike data is limited.
 
 	'''
 
-	def __init__(self, file_name, trace_channels=['Ch1', 'Ch2'], baseRe='(\w+)Ch\d+'):
+	def __init__(self, file_name, trace_channels=['Ch1'], baseRe='(\w+)Ch\d+',
+					markerRe = '_Ch32$'):
+
+		'''
+		Parameters
+		__________
+
+		file_name : str
+			file name or path to file containing HDF5 (.mat) data
+
+		trace_channels : iterable
+			Default - ['Ch1']
+			
+			Channel names that are to be extracted for easy access
+
+			Names must match the keys used in the HDF5 file.
+			PRESUMING data originates from spike2, CHannel names should simply 'Ch#' with
+			"#" being the number of the channel in spike2.
+
+			Ch32 is PRESUMED to be the marker channel
+
+		baseRE : str regex
+			RegEx for identifying the base key of the file. 
+			This is orindarily derived from the name of the spike2 file.
+			First group is used as the base
+
+		markerRe : str regex
+			As with baseRe, but for identifying the marker channel
+
+
+		Attributes
+		__________
+
+		Channels : list
+			Keys of all the channels in the data file
+
+		channel attrs : HDF5 objects
+			For each of the Trace Channels provided in the kwarg, there is
+			an attribute of the same name of either the class Trace or spikeTemp
+			This is for convenient access
+
+		MarkTimes : array (1d)
+			times of the markers from the marker channel
+
+		MarkCodes : array (1d)
+			Codes for each Marker Time.
+			Should encode stimulus type ... needs to be derived from lab data
+
+		TraceChannels : list
+			All Trace channels encoded as Trace types in same order as 
+			trace_channels (kwarg) (where possible) and _traceChannelKeys
+
+		SpikeTempChannels : list
+			As TraceChannels above
+
+
+		Methods
+		______
+
+		listChanData
+			Pretty Prints all channels and their attributes
+
+
+
+
+
+		'''
 
 		self.Dat = h5py.File(file_name)
 
 		self.baseRe = baseRe
 		self._baseNameRe = re.compile(r''.join(baseRe))
 
-		self._markChannelRe = re.compile('_Ch32$')
+		self.markerRe = markerRe
+		self._markChannelRe = re.compile(r''.join(markerRe))
 
 		self.Channels = self.listChannels(prnt=False)
 
@@ -195,30 +271,55 @@ class spk2MatRead:
 				self.MarkTimes = self._markChannel['times'][0]
 				self.MarkCodes = self._markChannel['codes'][0]
 
-		self._trace_chan_args = trace_channels
-		self.TraceChannels = []
+				break
 
-		# Keys exclusive to trace channels (known through manual inspection)
+		else:
+			print(f'No marker channel found.  Revise markerRe {markerRe}')
+
+
+		self._trace_chan_args = trace_channels
+
+		self.TraceChannels = []
+		self.SpikeTempChannels = []
+
+		self._traceChannelKeys = []
+		self._spikeTempChannelKeys = []
+
+		self._traceChannelNames = []
+		self._spikeTempChannelNames = []
+
+		# Keys EXCLUSIVE to types of channels (known through manual inspection)
 		# Using sets for checking for inclusion
 		trace_key_check = {'start'} 
 		spk_key_check = {'times'}
 
+
+		# Adding specified channels as attributes and filtering by type
 		for tc in trace_channels:
 
-			chan_name = self._baseName + tc
-			assert chan_name in self.Channels, f'Channel "{self._baseName}" + "{tc}" is not available'
+			chan_key = self._baseName + tc
+			assert chan_key in self.Channels, f'Channel "{self._baseName}" + "{tc}" is not available'
 
-			chan = self.Dat[chan_name]
-			self.TraceChannels.append(chan_name) # for iterating, if it's useful
+			chan = self.Dat[chan_key]
 
 
 			if trace_key_check.issubset( set( chan.keys())):
 				print(f'{tc} treated as trace')
-				self.__dict__.update({tc: trace(chan)})
+
+				self.__dict__.update({tc: trace(chan, tc)})
+
+				self._traceChannelKeys.append(chan_key) # for iterating, if it's useful
+				self._traceChannelNames.append(tc)
+				self.TraceChannels.append(getattr(self, tc))
 
 			elif spk_key_check.issubset( set( chan.keys())):
 				print(f'{tc} treated as spike template channel')
+
 				self.__dict__.update({tc: spikeTemp(chan)})
+
+				self._spikeTempChannelKeys.append(chan_key)
+				self._spikeTempChannelNames.append(tc)
+				self.SpikeTempChannels.append(getattr(self, tc)) # for iterating, if it's useful
 
 
 
@@ -250,9 +351,10 @@ class spk2MatRead:
 
 class trace:
 
-	def __init__(self, chan):
+	def __init__(self, chan, chan_name):
 
 		self.Dat = chan
+		self.Chan_Name = chan_name
 
 		self.DatKeys = self.listDataSets(prnt=False)
 
@@ -265,11 +367,16 @@ class trace:
 							'offset': 'offset' # Don't know what this is
 							}
 
+		# Aim is to return the whole flattened array.  Often slow
 		self.GetTraceData = lambda : chan['values'].value[0]
+
+		# For slicing etc
+		self.TraceData = chan['values']
 
 
 		# Might be nice to in future turn all params to attributes ... need recursive dict / node / plane object update ... ?
 		self.params = dict()
+
 		for k, name in trace_param_keys.items():
 
 			try:
@@ -282,9 +389,10 @@ class trace:
 
 			except:
 
-				print(f'\n{k} is not an attribute of {chan.name} ... not the channel you were expecting???')
+				print(f'\n{k} is not an attribute of {self.Chan_Name} ... not the channel you were expecting???')
 
 
+		# Create time array for each data point in trace data
 
 		try:
 			step = self.params['samp_time'][0]
@@ -309,7 +417,7 @@ class trace:
 		if prnt:
 			pprint(ks)
 		else:
-			return list(self.Dat.keys())
+			return ks
 
 
 
