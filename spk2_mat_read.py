@@ -368,7 +368,7 @@ class trace:
 							}
 
 		# Aim is to return the whole flattened array.  Often slow
-		self.GetTraceData = lambda : chan['values'].value[0]
+		# self.GetTraceData = lambda : chan['values'].value[0]
 
 		# For slicing etc
 		self.TraceData = chan['values']
@@ -383,7 +383,9 @@ class trace:
 				values = chan[k].value
 
 				if values.size == 1:
-					values = values[0]
+					# values = values[0]
+					# For when ndim >1, always returns unary array
+					values = values.flatten()[0]
 
 				self.params.update({name: values })
 
@@ -395,7 +397,7 @@ class trace:
 		# Create time array for each data point in trace data
 
 		try:
-			step = self.params['samp_time'][0]
+			step = self.params['samp_time']
 			self.SampleFreq = 1 / step
 
 			start = self.params['start']
@@ -418,6 +420,13 @@ class trace:
 			pprint(ks)
 		else:
 			return ks
+
+	def GetTraceData(self):
+		'''
+			return the whole flattened array.  Often slow
+		'''	
+		return self.Dat['values'].value[0]
+
 
 
 
