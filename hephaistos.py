@@ -8,6 +8,7 @@ Hephaistos -> god of craft and metalwork ... this is the hard work!
 
 import pathlib as pthl
 from pprint import pprint
+import pickle
 
 from pyth.zeus import spk2_mat_read as spkmr
 import neo
@@ -34,8 +35,6 @@ def doc_string_add(inserted_func):
 	Inserts doc string of inserted func into designated format `{0} locations
 	If multiple functions provided, PRESUMES location is assigned in target doc string
 	If not so provided, failur to insert will pass silently (as str.format() raises no errors)
-
-
 	'''
 
 	if not isinstance(inserted_func, list) and callable(inserted_func) :
@@ -52,17 +51,26 @@ def doc_string_add(inserted_func):
 	return wrapper
 
 
+def load(filename):
+	with open(filename, 'rb') as f:
+		loadedUnit = pickle.load(f)
 
-# Functions or classes?
+	for k,v in loadU.TDCDataIO.info['HephTDCState'].items():
+		print(f'{k} ... {v}')
+		
+	pprint(loadedUnit.TDCDataIO.info)
 
-# data mangemeent ... raw v output data?  ... need to keep in separate directories
+	return loadedUnit
+
+
+
 
 class Hephaistos:
 
 	'''
 	'''
 
-	def __init__(self, data_path='', output_path='.'):
+	def __init__(self, data_path=''):
 
 		'''
 			Class for managing raw data -> spike data for zeus
@@ -75,23 +83,19 @@ class Hephaistos:
 			should it be useful later
 
 			AS A RESULT - YOU MUST USE HEPHAISTOS IN THE DATA_PATH DIRECTORY
-			
+
 
 			Parameters
 			__________
 
 			data_path : str
 				path to data file
-			output_path : str
-				path to location where spike data files will be placed
 		'''
 
 		self.Data_path = pthl.Path(data_path).absolute()
-		self.Output_path = pthl.Path(output_path).absolute()
 
 		assert self.Data_path.is_file(), 'data path not a file, please provide file with data'
 
-		assert self.Output_path.is_dir(), 'output path is not a directory, need directory to store files in'
 
 		# Add folder for all tdc data of the same name as the data file
 		self._processing_data_path = self.Data_path.parent / self.Data_path.stem # stem removes suffix of file, useful to create new folder 
@@ -101,10 +105,13 @@ class Hephaistos:
 
 		# Make all paths relative
 
-		paths = ('Data_path', 'Output_path', '_processing_data_path')
+		paths = ('Data_path', '_processing_data_path')
 
 		# Root for data storage is Data_path
 		storage_root = self.Data_path.parents[0]
+
+		# Check that currently in storage root (else relative paths won't work)
+		assert storage_root == pthl.Path.cwd(), f'You are not in data path directory, relative paths cannot work.\n Move to {storage_root}'
 
 		self._absolute_paths = {
 				k: self.__dict__.get(k, None)
@@ -114,8 +121,14 @@ class Hephaistos:
 
 		for p in paths:
 			currentPath = self.__dict__[p]
-			newPath = currentPath.relative_to(root_storage)
+			newPath = currentPath.relative_to(storage_root)
+			assert newPath.exists(), f'New relative path ({newPath}) does not exist. \nGenerating relative path failed somehow?'
+
 			self.__dict__[p] = newPath
+
+
+
+
 
 
 
@@ -369,11 +382,18 @@ class Hephaistos:
 			self.TDCDataIO.info['spkmr_channel'] = channel
 			self.TDCDataIO.flush_info()
 
+			# Custom state recording
+			self.TDCDataIO.info['HephTDCState'] = {}
+			self.TDCDataIO.info['HephTDCState'].update(
+					dict(DataIO = True)
+				)
+			self.TDCDataIO.flush_info()
+
 		else:
 			previous_channel = self.TDCDataIO.info['spkmr_channel']
 
-			assert previous_channel == channel, f'Channel arg ({channel}) is not same as previously encoded TDC channel ({previous_channel})'
-			
+			# assert previous_channel == channel, f'Channel arg ({channel}) is not same as previously encoded TDC channel ({previous_channel})'
+
 			# recreating variable used above for future reference below
 			self.TDC_channel = previous_channel
 
@@ -411,6 +431,13 @@ class Hephaistos:
 
 		self.TDCCatConstructor.run_signalprocessor(duration=catalogue_duration)
 
+		# Custom state recording
+		self.TDCDataIO.info['HephTDCState'].update(
+				dict(PreProcess = True)
+			)
+		self.TDCDataIO.flush_info()
+
+
 		pprint(self.TDCCatConstructor)
 		pprint(self.TDCCatConstructor.info)
 
@@ -436,6 +463,13 @@ class Hephaistos:
 
 		self.TDCCatConstructor.clean_waveforms(alien_value_threshold=alien_value_threshold)
 
+		# Custom state recording
+		self.TDCDataIO.info['HephTDCState'].update(
+				dict(SetUpCatalogue = True)
+			)
+		self.TDCDataIO.flush_info()
+
+
 
 
 	def tdcCatPCAClust(self, n_pca_components = 7, pca_method = 'global_pca',
@@ -455,6 +489,13 @@ class Hephaistos:
 		self.TDCCatConstructor.find_clusters(method = clust_method, n_clusters = n_clusters)
 
 		self.TDC_clusters = self.TDCCatConstructor.clusters
+
+		# Custom state recording
+		self.TDCDataIO.info['HephTDCState'].update(
+				dict(PCAClust = True)
+			)
+		self.TDCDataIO.flush_info()
+
 
 		print(self.TDCCatConstructor)
 
@@ -531,6 +572,13 @@ class Hephaistos:
 		self.TDCPeeler.change_params(catalogue=self.TDCCatalogue)
 
 		self.TDCPeeler.run()
+
+		# Custom state recording
+		self.TDCDataIO.info['HephTDCState'].update(
+				dict(Peel = True)
+			)
+		self.TDCDataIO.flush_info()
+	
 
 
 
@@ -695,10 +743,63 @@ class Hephaistos:
 			self.MultiUnitSem = sem(wfsMU, axis=0)
 
 
+		# Custom state recording
+		self.TDCDataIO.info['HephTDCState'].update(
+				dict(ExtractSpikes = True)
+			)
+		self.TDCDataIO.flush_info()
+
 
 		# make self.MultiUnitTemps, Avgs, STd etc
 		# temps will be each of the clusters that were merged
 		# avgs etc will the same ... single
+
+	def save(self, file_name = None):
+		'''
+		pickle the unit
+		'''
+
+		if file_name is None:
+			file_name = self.Data_path.parent / ('Heph_' + self.Data_path.stem + '.pkl')
+
+		elif pthl.Path(file_name).suffix != '.pkl':
+			file_name = self.Data_path.parent / pthl.Path(file_name).with_suffix('.pkl')
+
+		with open(file_name, 'wb') as f:
+			pickle.dump(self, f)
+
+		print(f'Saved pickle file to {str(file_name.parent)} as {str(file_name.name)}')
+
+
+	def __getstate__(self):
+		state = self.__dict__.copy()
+
+		# HDF5 Dat attribute prevents pickling, and is also redundant 
+		# (it's) a read of data files
+		del state['Dat']
+
+		# Get rid of the TDC attributes, as they occupy much redundant space
+		# Essentially the whole contents of the processing path is encoded in the
+		# pickle (through all the memmap objects probably)
+		# They will be re instantiated in setstate
+		for tdcAttr in ['TDCDataIO', 'TDCCatConstructor', 'TDCPeeler']:
+			del state[tdcAttr]
+
+		return state
+
+
+	def __setstate__(self, state):
+		# re-instantiate TDC objects
+		# Just do all three, irrespective of whether they were already done
+		# Except for dataio, only if tdcInit has been run (maybe just run tdcInit, then make cat and peeler, as they rely only on dataio object)
+
+		self.__dict__.update(state)
+
+		self.tdcInit()
+
+		self.TDCCatConstructor = CatalogueConstructor(dataio = self.TDCDataIO)
+		self.TDCPeeler = Peeler(self.TDCDataIO)
+
 
 
 
