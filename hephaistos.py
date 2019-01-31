@@ -71,6 +71,12 @@ class Hephaistos:
 
 			NOTE - design of spk2_mat_read is to only call large data, not store internally
 
+			NOTE - paths are used as relative paths, but also stored as absolute paths
+			should it be useful later
+
+			AS A RESULT - YOU MUST USE HEPHAISTOS IN THE DATA_PATH DIRECTORY
+			
+
 			Parameters
 			__________
 
@@ -91,6 +97,27 @@ class Hephaistos:
 		self._processing_data_path = self.Data_path.parent / self.Data_path.stem # stem removes suffix of file, useful to create new folder 
 		if not self._processing_data_path.is_dir():
 			self._processing_data_path.mkdir()
+
+
+		# Make all paths relative
+
+		paths = ('Data_path', 'Output_path', '_processing_data_path')
+
+		# Root for data storage is Data_path
+		storage_root = self.Data_path.parents[0]
+
+		self._absolute_paths = {
+				k: self.__dict__.get(k, None)
+				for k in 
+				paths
+			}
+
+		for p in paths:
+			currentPath = self.__dict__[p]
+			newPath = currentPath.relative_to(root_storage)
+			self.__dict__[p] = newPath
+
+
 
 		self.RawBinChans = rawBinChans()
 
