@@ -151,6 +151,10 @@ class Hephaistos:
 
 		self.Dat = spkmr.spk2MatRead(self.Data_path, **kwargs )
 
+		# Add marker data directly to self so that no need to reload matlab data
+		# as self.Dat attribute when loading from pickled save file (as hdf5 not pickle-able)
+		self.MarkTimes = self.Dat.MarkTimes
+		self.MarkCodes = self.Dat.MarkCodes
 
 	@doc_string_add(spkmr.basicMatRead.__init__)
 	def readBasicSpkMat(self, **kwargs):
@@ -164,6 +168,11 @@ class Hephaistos:
 		'''
 
 		self.Dat = spkmr.basicMatRead(self.Data_path, **kwargs)
+
+		# Add marker data directly to self so that no need to reload matlab data
+		# as self.Dat attribute when loading from pickled save file (as hdf5 not pickle-able)
+		self.MarkTimes = self.Dat.MarkTimes
+		self.MarkCodes = self.Dat.MarkCodes
 
 
 	def writeWaveClusMat(self, channel = 'Ch1'):
@@ -701,9 +710,6 @@ class Hephaistos:
 
 		early_late_idx = self.Spikes[(self.Spikes['index']<np.abs(catN_Left)) | (self.Spikes['index']>(trace_length-catN_Right))]
 		self.Spikes.drop(labels=early_late_idx.index, axis=0, inplace=True)
-
-
-
 
 
 		for i,e in enumerate(nonMU_CL):
