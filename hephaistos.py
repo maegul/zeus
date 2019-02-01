@@ -692,14 +692,23 @@ class Hephaistos:
 		# catN_Left, catN_Right = self.TDCCatConstructor.catalogue['n_left'], self.TDCCatConstructor.catalogue['n_right']	
 		catN_Left, catN_Right = self.TDCCatalogue['n_left'], self.TDCCatalogue['n_right']	
 
-		# shape -> [n clusters (sorted), peak size (according to catConstructor.catalogue)]
-		self.SpikeTemplates = np.squeeze(
-			self.TDCCatalogue['centers0'][nonMU_CL, ...]
-			)
+		df_col_sample_idx = np.arange(catN_Right - catN_Left)
 
-		self.SpikeAvgs = np.zeros((nonMU_CL.size, catN_Right - catN_Left))
-		self.SpikeStd = np.zeros_like(self.SpikeAvgs)
-		self.SpikeSem = np.zeros_like(self.SpikeStd)
+		# Instantiate empty dataframes, with appropriate amount of columns (one for each sample)
+		self.SpikeTemplates, self.SpikeAvgs, self.SpikeStd, self.SpikeSem = (
+			pd.DataFrame(columns = df_col_sample_idx).rename_axis('cluster_label')
+			for i in range(4)
+			)
+		# shape -> [n clusters (sorted), peak size (according to catConstructor.catalogue)]
+		# self.SpikeTemplates = np.squeeze(
+		# 	self.TDCCatalogue['centers0'][nonMU_CL, ...]
+		# 	)
+
+		# self.SpikeAvgs = np.zeros((nonMU_CL.size, catN_Right - catN_Left))
+		# self.SpikeStd = np.zeros_like(self.SpikeAvgs)
+		# self.SpikeSem = np.zeros_like(self.SpikeStd)
+
+
 
 		# Sometimes a spike peak can be identified earlier than n_left, such that it cannot
 		# have a whole waveform. Same with late spikes.
@@ -725,9 +734,19 @@ class Hephaistos:
 			std = np.std(wfs, axis=0)
 			stdErr = sem(wfs, axis=0)
 
-			self.SpikeAvgs[i,:] = mean
-			self.SpikeStd[i, :] = std
-			self.SpikeSem[i, :] = stdErr
+			# order of labels in tdc may be not in order of number
+			# label_to_index records (I think) what the correspondence is, as key-value dict pairs
+			label_to_idx = self.TDCCatalogue['label_to_index'][e]
+
+			template = np.squeeze(
+				self.TDCCatalogue['centers0'][label_to_idx,...]
+				)
+			# Add rows with .loc[index/cluster_label]
+			self.SpikeTemplates.loc[e] = template
+			self.SpikeAvgs.loc[e] = mean
+			self.SpikeStd.loc[e] = std
+			self.SpikeSem.loc[e] = stdErr
+
 
 		if merge_multi_unit:
 
