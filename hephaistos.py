@@ -55,9 +55,9 @@ def load(filename):
 	with open(filename, 'rb') as f:
 		loadedUnit = pickle.load(f)
 
-	for k,v in loadU.TDCDataIO.info['HephTDCState'].items():
+	for k,v in loadedUnit.TDCDataIO.info['HephTDCState'].items():
 		print(f'{k} ... {v}')
-		
+
 	pprint(loadedUnit.TDCDataIO.info)
 
 	return loadedUnit
@@ -566,6 +566,7 @@ class Hephaistos:
 
 		self.TDCCatConstructor.make_catalogue_for_peeler()
 
+		# Useful to store here as I don't think tdc stores it persistently with the peeler
 		self.TDCCatalogue = self.TDCDataIO.load_catalogue()
 
 		self.TDCPeeler = Peeler(self.TDCDataIO)
@@ -679,11 +680,12 @@ class Hephaistos:
 		# which clusters get averages
 
 		# spans of waveforms for the catalgue used by the peeler
-		catN_Left, catN_Right = self.TDCCatConstructor.catalogue['n_left'], self.TDCCatConstructor.catalogue['n_right']	
+		# catN_Left, catN_Right = self.TDCCatConstructor.catalogue['n_left'], self.TDCCatConstructor.catalogue['n_right']	
+		catN_Left, catN_Right = self.TDCCatalogue['n_left'], self.TDCCatalogue['n_right']	
 
 		# shape -> [n clusters (sorted), peak size (according to catConstructor.catalogue)]
 		self.SpikeTemplates = np.squeeze(
-			self.TDCCatConstructor.catalogue['centers0'][nonMU_CL, ...]
+			self.TDCCatalogue['centers0'][nonMU_CL, ...]
 			)
 
 		self.SpikeAvgs = np.zeros((nonMU_CL.size, catN_Right - catN_Left))
@@ -729,7 +731,7 @@ class Hephaistos:
 			multi_unit_clusters.sort()
 
 			self.MultiUnitTemps = np.squeeze(
-				self.TDCCatConstructor.catalogue['centers0'][multi_unit_clusters, ...]
+				self.TDCCatalogue['centers0'][multi_unit_clusters, ...]
 				)
 
 			indicesMU = self.Spikes.loc[self.Spikes.cluster_label==111, 'index']
@@ -776,14 +778,21 @@ class Hephaistos:
 
 		# HDF5 Dat attribute prevents pickling, and is also redundant 
 		# (it's) a read of data files
-		del state['Dat']
+
+		try:
+			del state['Dat']
+		except KeyError:
+			pass
 
 		# Get rid of the TDC attributes, as they occupy much redundant space
 		# Essentially the whole contents of the processing path is encoded in the
 		# pickle (through all the memmap objects probably)
 		# They will be re instantiated in setstate
 		for tdcAttr in ['TDCDataIO', 'TDCCatConstructor', 'TDCPeeler']:
-			del state[tdcAttr]
+			try:	
+				del state[tdcAttr]
+			except KeyError:
+				pass
 
 		return state
 
