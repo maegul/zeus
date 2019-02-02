@@ -1,0 +1,68 @@
+
+TDS Integration:
+  ✔ Check Prototype code @done (19-01-17 23:17)
+  ☐ Check reusable catalogue?
+     Maybe not appropriate, perhaps best to try to achieve similar clusters across recordings
+     TDC themselves do not advocate this, instead they recommend that one presume stability for only a short period of time.
+  ✔ dataIO path integrity @done (19-01-23 20:35)
+  ✔ wrap setup @done (19-01-23 21:04)
+  ✔ wrap catalogue construction and open @done (19-01-24 00:27)
+  ✔ wrap peeler open and construction @done (19-01-24 00:27)
+  ✔ wrap save spike times to file @done (19-01-24 17:45)
+    Add file name options?
+    Check whether comments on clusters are also saved ... if not, custom integration when reading CSV into dataframe?
+  ✔ wrap save spike times to attribute? @done (19-01-24 17:45)
+    depends on size
+    load as a dataframe and save as attribute?
+    if necessary, concatenate all multi unit clusters?
+    OR ... extract my own spike data?
+
+  ✔ add custom spike cleaning functions @done (19-01-27 15:26)
+    ✔ collission filtering within clusters @done (19-01-27 15:23)
+      relegate colliding spikes to where?
+      Manipulate only inattribute?
+    ☐ review of ISI after collission filtering?
+
+  ☐ Saving 
+    ✔ cluster template waveform, @done (19-01-25 16:39)
+    ✔ average waveform, @done (19-01-25 16:39)
+    ✔ confInt for avg waveform @done (19-01-25 16:39)
+    ✔ for each cluster? @done (19-01-25 17:03)
+
+ ✔ Test! @done (19-01-30 13:50)
+
+  ☐ Saving spikes for zeus!
+  ☐ Pickling each unit(?!?!)
+    Perhaps not possible ... getting typeerrors (latest: _thread._local object cannot be pickled)
+    attaching HDF5 and TDC could be a problem
+
+  ☐ How deal with partial output data already existing?
+
+
+  ☐ Merge Read functions so that single read function with options @low
+
+  As paths are stored as relative paths (with original absolute in reserve):
+    ☐ add a check for whether in the right directory ?
+      ☐ Perhaps with simple directory changing function?
+    ☐ Add ability to switch to using absolute directories?
+      This is probably a bad idea, as there's no sure way to locate the relevant directories, relative to the current directory, 
+
+    Best solution, given how much TDC saves to file:
+      ☐ custom function for creating all the necessary variables from the saved TDC files??
+        Perhaps attaching CatConstructor and Peeler objects is all that is necessary?
+          Detect if TDC files saved, and if so, attach catcon and peeler (detect if done already?) and take care of any particular variables I'm using for later (perhaps in a separate info/parameters file ... or through the TDC info.json using custom keys)
+
+          As, once tdc has been initialised, tdc is saving everything for me, the rest is
+          just metadata.
+      ☐ saving and loading of parameter files to JSON
+      ☐ Relying on notebooks as a form of saving state?
+        The code can always be re-run
+      
+
+
+QuickView:
+  ✔ Time on the x axis, at least for the downsampled view? @done (19-01-09 14:14)
+  ☐ Add lines or something for the markers
+  ☐ Buffering with HDF5 native slicing
+    Perhaps not necessary, as any given channel is not that much memory (~50MB?)
+  ☐ a quick MAD calculation, to be added to the view? (plus filtering too)
