@@ -1,3 +1,4 @@
+import pathlib as pthl
 
 import math
 import numpy as np
@@ -8,6 +9,8 @@ import h5py # for importing matlab files formatted after version 7.3
 import scipy.stats as stats
 from scipy.ndimage import gaussian_filter1d
 import numpy.fft as fft
+
+from . import hephaistos as heph
 
 # import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -20,6 +23,18 @@ import os
 import glob
 
 import pickle
+
+def load_data(data_source, mode, cell_no=None):
+	'''
+	Wrapper around loading functions for all loading
+	'''		
+
+	if mode == 'txt':
+		return load_raw_data(data_source, matlab=False)
+	elif mode == 'matlab':
+		return load_raw_data(data_source, matlab=True)
+	elif mode == 'heph':
+		return load_hephaistos(data_source, cell_no=cell_no)
 
 def load_raw_data(dir, matlab=False):
 	
@@ -174,6 +189,9 @@ def load_hephaistos(heph_unit, cell_no=None):
 	data['shape_SEM'] = heph_unit.SpikeSem.loc[cell_no, :].values
 
 
+	return data
+
+
 
 
 
@@ -185,11 +203,13 @@ def save(dataset):
 	Pickles a class instantiation of `Zeus`
 	"""
 	
-	directory = dataset.parameters['directory']
+	directory = dataset.Output_path
 	data_label = dataset.parameters['data_label']
+
+	save_path = directory / (data_label + '_object.pkl')
 	
 	
-	with open('%s%s_object.pkl'%(directory, data_label), 'wb') as f:
+	with open(save_path, 'wb') as f:
 		pickle.dump(dataset, f)
 		
 
@@ -389,7 +409,8 @@ class Zeus:
 	
 	
 	
-	def __init__(self, data_path, meta_data = None, cell_no = None, matlab=False):
+	def __init__(self, data_path = None, output_path = '.', cell_no = None,
+		data_mode='matlab'):
 		
 		"""
 		Instatiates the output of `zeus.load` as self.data.
@@ -403,19 +424,49 @@ class Zeus:
 		Parameters
 		_________
 
-		data_label
+		data_path : path / str / Hephaistos object
+			Path to Hephaistos object or pickle, or
+			Path to directory containing relevant data files 
+
+		data_mode : str
+			Relevant only if not using hephaistos objects or save files
+			But instead using spike 2 matlab files or txt files directly
+
+			'matlab' or 'txt', to define what kind of data to load
 		
 		"""
 		
 		# Load files and assign to attributes
 		
 		# Treat Hephaistos object differently 
+		
+		# Check if data_path is hephaistos object
 		if data_path.__class__.__name__ == 'Hephaistos':
-			self.data = load_hephaistos(data_path, cell_no=cell_no)
+			# Take data directly from hephaistos object
+			self.data = load_data(data_path, 'heph', cell_no=cell_no)
 
+		# If not, treat as path / str
 		else:
-			# Old style txt data loading
-			self.data = load_raw_data(data_path, matlab=matlab)
+			self.Data_path = pthl.Path(data_path).absolute()
+			assert self.Data_path.exists(), f'Does not exist; data_path: {self.Data_path}'
+
+			# If path is to a pkl file, treat as a hephaistos save file
+			if self.Data_path.suffix == '.pkl':
+				unit = heph.load(self.Data_path)
+				self.data = load_data(unit, 'heph', cell_no)
+
+			# If a directory, then treat as directory of txt or matlab data files
+			elif self.Data_path.is_dir():
+
+				self.data = load_data(data_path, data_mode)
+
+
+
+		self.Output_path = pthl.Path(output_path).absolute()
+		if not self.Output_path.is_dir():
+			self.Output_path.mkdir()
+
+
 
 
 		
@@ -446,25 +497,29 @@ class Zeus:
 			pass
 
 
-		curr_dir = os.getcwd()
 		self.parameters = {}
 		
-		self.parameters['directory'] = dir
-		self.parameters['ops_directory'] = curr_dir
+
+
+		# self.parameters['ops_directory'] = curr_dir
 
 		# assert type(meta_data) == dict, 'meta data should be a ditionary from athena'
 		
-		self.meta_data = meta_data
 		
-		if (self.parameters['directory'][:3] == '../') or (self.parameters['directory'][:2] == './'):
-			print('\n\nFull directories should be employed for more accurate data records \n\n')
 		
 		print ('\nRun the following methods:'
 				'\n self.sort() - to sort trials and generate PSTHs.'
 				'\n self.conditions() - to generate and define condition descriptions and labels'
 				'\nself._analyse() - to extract out the relevant measurement of response amplitude for each condition\n\n'
 				'Saving and plotting functions may then be used.')
-		
+
+	def _update_meta_data(meta_data):
+		'''
+		Take a dictionary of the appropriate keys and add as a metadata object
+		'''
+		pass
+
+
 		
 	def _sort(self, conditions = 9, trials = 10, stim_len = None,
 			  bin_width=0.02, auto_spont=False, sigma=3, alpha=0.05, 
@@ -1289,17 +1344,20 @@ class Zeus:
 		
 		Saves experimental parameters and the condition tuning dataset, in Pandas form.
 		'''
-		directory = self.parameters['directory']
+		directory = self.Output_path # should be pathlib path
 		data_label = self.parameters['data_label']
 		con_type = self.parameters['condition_type']
+
+		parameters_path = directory / (data_label + '_parameters.csv')
+		tuning_path = directory / (data_label + '_' + con_type + '_tuning.csv')
 		
 		# Save parameters to csv
 		param = pd.Series(self.parameters)
-		with open('%s%s_parameters.csv'%(directory, data_label), 'w') as f:
+		with open(parameters_path, 'w') as f:
 			param.to_csv(f)
 		
 		
-		with open('%s%s_%s_tuning.csv'%(directory, data_label, con_type), 'w') as f:
+		with open(tuning_path, 'w') as f:
 			self.cond_tuning_pd.to_csv(f)
 			
 		## Other files to save etc
