@@ -1,5 +1,5 @@
 import pathlib as pthl
-import inspect
+# import inspect
 # from pprint import pprint
 
 import math
@@ -28,6 +28,7 @@ import pickle
 
 from . import hermes
 from . import hephaistos as heph
+from . import athena
 
 
 def load_data(data_source, mode, cell_no=None):
@@ -390,7 +391,7 @@ def bootstrap(data, alpha=0.05, n_bootstrap = 2000, func=None, **func_args):
 
 ## Class Definitions
 
-class Zeus:
+class Themis:
 	
 	
 	
@@ -453,9 +454,11 @@ class Zeus:
 
 
 
-		self.Output_path = pthl.Path(output_path).absolute()
-		if not self.Output_path.is_dir():
-			self.Output_path.mkdir()
+		self.Output_path = pthl.Path(output_path)
+		self._absolute_paths['Output_path'] = self.Output_path.absolute()
+
+		if not self.Output_path.absolute().is_dir():
+			self.Output_path.absolute().mkdir()
 
 
 
@@ -504,11 +507,51 @@ class Zeus:
 				'\nself._analyse() - to extract out the relevant measurement of response amplitude for each condition\n\n'
 				'Saving and plotting functions may then be used.')
 
-	def _update_meta_data(meta_data):
+	def _assign_project(self, project):
 		'''
-		Take a dictionary of the appropriate keys and add as a metadata object
+		Accepts a project ID, or an Athena object to attach and assign a project
+		to this themis object
+
+		Parameters
+		______
+		project : Athena object | str (path)
+			The athena object for the project, or a str providing the path to the 
+			pickled object.
 		'''
-		pass
+
+		if project.__class__.__name__ == 'Athena':
+			# pull out project ID
+
+			self.PROJ_ID = project.PROJ_ID
+			# take path of
+			self.PROJ_PATH = project.path
+
+			self._PROJ_PATH_ABSOLUTE = project._absolute_paths['path']
+
+
+		elif isinstance(project, str):
+
+			proj_path = pthl.Path(project)
+
+			with open(proj_path, 'rb') as f:
+				proj_object = pickle.load(f)
+
+			self.PROJ_ID = proj_object.PROJ_ID
+			# take path of
+			self.PROJ_PATH = proj_object.path
+
+			self._PROJ_PATH_ABSOLUTE = proj_object._absolute_paths['path']
+
+		# Check if athena and themis are pointing to same directory
+		# Using absolute of proj path, as paths may simply be '.', which is ok for
+		# internal use, but, as athena and its path should already have been established
+		# we use it as the reference and test for having the same output path is it
+
+		if self.Output_path.absolute() != self._PROJ_PATH_ABSOLUTE:
+			print((f'Themis output path ("{self.Output_path.absolute()}")'
+				'is not same as project path ("{self._PROJ_PATH_ABSOLUTE}")'
+				))
+
 
 
 		
@@ -1104,61 +1147,42 @@ class Zeus:
 									  self.parameters['condition_unit'])
 					self.cond_label.append(label)
 
-	def _cell_meta_data(self,experiment=None, unit=None, cell=None, track_no=None):
-		'''
-		Update cell meta data
-		'''
 
-		args = inspect.getargvalues(inspect.currentframe())
-
-		self.meta_data = {
-			k : args.locals[k]
-			for k in args.args
-			if args.locals[k] is not None
-		}
-
-	def _stim_params(self, ori=None, contrast=None, 
-		bar_width=None, bar_length=None, bar_sweep=None, bar_speed=None, bar_polarity=None):
+	def _stim_params(self, **kwargs):
 		'''
 		Update stimulus meta data in addition to the conditions of each test
 		kwargs are a intended to be an exhaustive list of options
 		'''
-		args = inspect.getargvalues(inspect.currentframe())
+		# args = inspect.getargvalues(inspect.currentframe())
 
-		self.stim_params = {
-			k : args.locals[k]
-			for k in args.args
-			if args.locals[k] is not None
-		}
+		
 
-		# define units for each kwarg
+		self.STIM_PARAMS = hermes.mk_stim_params(**kwargs)
 
-		units = dict(
-			ori = 'degrees',
-			bar_width = 'degrees',
-			bar_length = 'degrees',
-			bar_sweep = 'degrees',
-			bar_speed = 'degrees/s',
-			)
 
-		# for each arg recorded as a param, pull out the unit, and store as self.stim_params_units
 
-		self.stim_params_units = {
-			k : units[k]
-			for k in self.stim_params.keys()
-			if k in units.keys()
-		}
+	def _stim_params_print(self):
 
-	# def _stim_params_print(self):
+		if hasattr(self, 'STIM_PARAMS'):
 
-	# 	print('Stimulus Parameters\n')
+			print('Stimulus Parameters\n')
 
-	# 	concat_stim_params = {
-	# 		k
-	# 	}
-	# 	pprint(self.stim_params)
+			hermes.show_info(self.STIM_PARAMS)
 
-	# 	print('\nStim')
+		else:
+			print('Stim params not set yet ... use self._stim_params')
+
+
+	def _cell_id_print(self):
+
+		if hasattr(self, 'CELL_ID'):
+
+			print('Cell and Experiment ID:\n')
+
+			hermes.show_info(self.CELL_ID)
+
+		else:
+			print('No cell ID!!')
 
 
 
