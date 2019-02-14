@@ -558,8 +558,14 @@ class Themis:
 
 		if self.Output_path.absolute() != self._PROJ_PATH_ABSOLUTE:
 			print((f'Themis output path ("{self.Output_path.absolute()}")'
-				'is not same as project path ("{self._PROJ_PATH_ABSOLUTE}")'
+				f'is not same as project path ("{self._PROJ_PATH_ABSOLUTE}")'
 				))
+
+		assert pthl.Path.cwd() == self.Output_path.absolute(), (
+			f'Current path ("{pthl.Path.cwd()}") is not same as'
+			f'Output path ("{self.Output_path.absolute()}")'
+			'You should be working in the output path once coupling with a project!'
+			)
 
 	def _cell_ID(self, force = False, 
 		experiment = None, unit = None, cell = None, run = None):
