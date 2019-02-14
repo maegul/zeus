@@ -32,6 +32,24 @@ class Athena:
 			'path': self.path.absolute()
 		}
 
+
+	def save(self):
+
+		file_name = self.path / ('Athena_' + self.PROJ_ID['name'] + '_' + self.PROJ_ID['ID'] + '.pkl')
+
+		self.SavePath = file_name
+		self._absolute_paths['SavePath'] = file_name.absolute()
+
+		# Atomic saving (helpful?)
+		temp_path = file_name.with_suffix(file_name.suffix + '.tmp')
+
+		with open(temp_path, 'wb') as f:
+			pickle.dump(self, f)
+
+		temp_path.rename(file_name)
+
+		print(f'Saved pickle file to {str(self.path)} as {str(file_name.name)}')
+
 # def update(d, u):
 # 	'''
 # 	For updating nested dictionaries without destroying elements
