@@ -396,8 +396,7 @@ class Themis:
 	
 	
 	def __init__(self, data_path = None, output_path = '.', 
-		data_mode='matlab',
-		experiment = None, unit = None, cell = None, run = None):
+		data_mode='matlab', cell=None):
 		
 		"""
 		Instatiates the output of `zeus.load` as self.data.
@@ -422,11 +421,6 @@ class Themis:
 			'matlab' or 'txt', to define what kind of data to load
 		
 		"""
-
-		# Assign cell ID
-		self.CELL_ID = hermes.mk_cell_ID(
-			experiment = experiment, unit=unit, cell=cell, run = run
-			)
 
 		# Load files and assign to attributes
 		
@@ -551,6 +545,46 @@ class Themis:
 			print((f'Themis output path ("{self.Output_path.absolute()}")'
 				'is not same as project path ("{self._PROJ_PATH_ABSOLUTE}")'
 				))
+
+	def _cell_ID(self, force = False, 
+		experiment = None, unit = None, cell = None, run = None):
+
+
+		cell_id = hermes.mk_cell_ID(
+			experiment = experiment, unit=unit, cell=cell, run = run
+			)
+
+		self.CELL_KEY = f'{experiment}u{unit}c{cell}r{run}'
+
+
+		if hasattr(self, 'PROJ_ID'):
+			with open(self.ATHENA_PATH, 'rb') as f:
+				athena_obj = pickle.load(f) 
+
+			# Check if stim and cell dataset exists
+			if hasattr(athena_obj, 'CellData'):
+
+				# Check for repeats
+				checkResult = hermes.checkCellData(cell_id, athena_obj.CellData, splitDataSet=True)
+
+				if (force or checkResult):
+					self.CELL_ID = cell_id
+
+				else:
+					print('potential redundancies, stim params NOT assigned')
+					
+			else:
+				print('Athena has not cell data yet; stim params assigned')
+				self.CELL_ID = cell_id
+		else:
+			print('No project assigned, stim params assigned')
+			self.CELL_ID = cell_id
+
+
+		# Assign cell ID
+		self.CELL_ID = hermes.mk_cell_ID(
+			experiment = experiment, unit=unit, cell=cell, run = run
+			)
 
 
 
