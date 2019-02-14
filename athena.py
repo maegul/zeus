@@ -50,6 +50,62 @@ class Athena:
 
 		print(f'Saved pickle file to {str(self.path)} as {str(file_name.name)}')
 
+
+	def addThemis(self, themis_obj, check_redundancy=False):
+
+		if isinstance(themis_obj, str):
+
+			# Not sure how to use or store the path
+
+			# themis_path = themis_obj
+			with open(themis_obj, 'rb') as f:
+				themis_obj = pickle.load(f)
+
+		assert themis_obj.__class__.__name__ == 'Themis', 'Themis object is not a themis object?'
+
+
+		hasCellID = hasattr(themis_obj, 'CELL_ID')
+		hasStimParams = hasattr(themis_obj, 'STIM_PARAMS')
+
+		assert hasCellID and hasStimParams, (
+			f'Themis object does not have required data sets.\n'  
+			f'Cell ID: {hasCellID};  Stim Params: {hasStimParams}'
+			)
+
+		# Init cell dataset as it does not exist yet
+		if not hasattr(self, 'CellData'):
+			self.CellData = hermes.initDataSet(
+				themis_obj.CELL_KEY, themis_obj.CELL_ID, themis_obj.STIM_PARAMS
+				)
+
+		# Appened cell dataset
+		else:
+			assert themis_obj.CELL_KEY not in self.CellData.index, (
+				f'Themis with CELL_KEY {themis_obj.CELL_KEY} already in athena.CellData'
+				)
+			
+			self.CellData = hermes.appendDataSet(
+				themis_obj.CELL_KEY,
+				themis_obj.CELL_ID, themis_obj.STIM_PARAMS, self.CellData,
+				# hermes.appendDataSet has checking built in, if force is False
+				force = (not check_redundancy)) 
+
+		# Take tuning data - init main Dataset
+		if not hasattr(self, 'TunData'):
+			self.TunData = themis_obj.cond_tuning_pd.copy()
+
+		# Or, concat with existing
+		else:
+			assert themis_obj.CELL_KEY not in self.CellData.index, (
+				f'Themis with CELL_KEY {themis_obj.CELL_KEY} already in athena.CellData'
+				)
+
+			self.TunData = pd.concat([self.TunData, themis_obj.cond_tuning_pd])
+
+		# join condition and cell data
+		# Relies on the cell key being the index for the join
+		self.Data = self.TunData.join(self.CellData)
+			
 # def update(d, u):
 # 	'''
 # 	For updating nested dictionaries without destroying elements
