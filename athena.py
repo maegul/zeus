@@ -9,6 +9,28 @@ import copy
 
 import collections
 
+from . import hermes
+from . import themis
+
+
+class Athena:
+
+	def __init__(self, name = None, description = None, path = '.'):
+
+		'''
+		path default is current directory.  Idea is all zeus files and athena files will be in same directory
+
+		Decoupling of data and output path can be done at zeus level
+		'''
+
+		self.PROJ_ID = hermes.mk_project_ID(name = name, description = description)
+
+		self.path = pthl.Path(path)
+
+		# save absolute paths if necessary
+		self._absolute_paths = {
+			'path': self.path.absolute()
+		}
 
 # def update(d, u):
 # 	'''
