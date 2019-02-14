@@ -1525,7 +1525,15 @@ class Themis:
 			self.cond_tuning = self.cond_tuning[:,self.cond_tuning[0].argsort()]
 			self.cond_tuning_pd.sort_values(self.cond_tuning_pd.columns[0], inplace=True)
 
-		
+
+		assert hasattr(self, 'CELL_ID'), 'Make Cell ID first'
+
+		self.cond_tuning_pd.insert(0, 'key', self.CELL_KEY)
+		self.cond_tuning_pd.set_index('key', inplace=True)
+
+		self.cond_tuning_pd.insert(0, 'cond_type', self.parameters['condition_type'])
+		self.cond_tuning_pd.insert(1, 'cond_unit', self.parameters['condition_unit'])
+
 		
 	def _out(self):
 		'''
