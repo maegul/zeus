@@ -551,6 +551,8 @@ class Themis:
 					f'No project assigned'
 					))
 
+
+
 		# Check if athena and themis are pointing to same directory
 		# Using absolute of proj path, as paths may simply be '.', which is ok for
 		# internal use, but, as athena and its path should already have been established
@@ -566,6 +568,8 @@ class Themis:
 			f'Output path ("{self.Output_path.absolute()}")'
 			'You should be working in the output path once coupling with a project!'
 			)
+
+
 
 	def _cell_ID(self, force = False, 
 		experiment = None, unit = None, cell = None, run = None):
@@ -666,6 +670,9 @@ class Themis:
 		else:
 			print('No cell ID!!')
 
+
+
+		
 	def _sort(self, use_codes = False, conditions = 9, trials = 10, stim_len = None,
 			  bin_width=0.02, auto_spont=False, sigma=3, alpha=0.05, 
 			  n_bootstrap=2000):
@@ -1259,6 +1266,10 @@ class Themis:
 					self.cond_label.append(label)
 
 
+
+
+
+
 	def _analyse(self, source='sdf', alpha = 0.05, n_bootstrap = 2000, biphas_split_point = 0.5):
 		
 		
@@ -1534,6 +1545,8 @@ class Themis:
 		self.cond_tuning_pd.insert(0, 'cond_type', self.parameters['condition_type'])
 		self.cond_tuning_pd.insert(1, 'cond_unit', self.parameters['condition_unit'])
 
+
+		
 		
 	def _out(self):
 		'''
