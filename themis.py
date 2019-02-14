@@ -449,6 +449,8 @@ class Themis:
 
 
 		self.Output_path = pthl.Path(output_path)
+
+		self._absolute_paths = {}
 		self._absolute_paths['Output_path'] = self.Output_path.absolute()
 
 		if not self.Output_path.absolute().is_dir():
@@ -503,7 +505,7 @@ class Themis:
 
 	def _assign_project(self, project):
 		'''
-		Accepts a project ID, or an Athena object to attach and assign a project
+		Accepts a path, or an Athena object to attach and assign a project
 		to this themis object
 
 		Parameters
@@ -519,8 +521,10 @@ class Themis:
 			self.PROJ_ID = project.PROJ_ID
 			# take path of
 			self.PROJ_PATH = project.path
+			self.ATHENA_PATH = project.SavePath
 
 			self._PROJ_PATH_ABSOLUTE = project._absolute_paths['path']
+			self._ATHENA_PATH_ABSOLUTE = project._absolute_paths['SavePath']
 
 
 		elif isinstance(project, str):
