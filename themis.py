@@ -527,18 +527,29 @@ class Themis:
 			self._ATHENA_PATH_ABSOLUTE = project._absolute_paths['SavePath']
 
 
-		elif isinstance(project, str):
+		# elif isinstance(project, str):
+		else:
+			try:
 
-			proj_path = pthl.Path(project)
+				athena_path = pthl.Path(project)
 
-			with open(proj_path, 'rb') as f:
-				proj_object = pickle.load(f)
+				with open(athena_path, 'rb') as f:
+					project = pickle.load(f)
 
-			self.PROJ_ID = proj_object.PROJ_ID
-			# take path of
-			self.PROJ_PATH = proj_object.path
+				self.PROJ_ID = project.PROJ_ID
+				# take path of
+				self.PROJ_PATH = project.path
 
-			self._PROJ_PATH_ABSOLUTE = proj_object._absolute_paths['path']
+				self._PROJ_PATH_ABSOLUTE = project._absolute_paths['path']
+				self._ATHENA_PATH_ABSOLUTE = project._absolute_paths['SavePath']
+
+			# Catching all exceptions :(
+			except:
+				print((
+					f'Could not treat project as path or string\n'
+					f'Type of project {type(project)}\n'
+					f'No project assigned'
+					))
 
 		# Check if athena and themis are pointing to same directory
 		# Using absolute of proj path, as paths may simply be '.', which is ok for
