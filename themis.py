@@ -1570,13 +1570,20 @@ class Themis:
 		
 		directory = self.Output_path
 
-		file_name = f'Zeus_{self.CELL_ID["experiment"]}_u{self.CELL_ID["unit"]}_c{self.CELL_ID["cell"]}_r{self.CELL_ID["run"]}.pkl'
+		file_name = f'Themis_{self.CELL_ID["experiment"]}_u{self.CELL_ID["unit"]}_c{self.CELL_ID["cell"]}_r{self.CELL_ID["run"]}.pkl'
 
 		save_path = directory / file_name
+
+		# Atomic saving (helpful?)
+		temp_path = save_path.with_suffix(save_path.suffix + '.tmp')
 		
+		self.SavePath = save_path
+
 		
-		with open(save_path, 'wb') as f:
+		with open(temp_path, 'wb') as f:
 			pickle.dump(self, f)
+
+		temp_path.rename(save_path)
 
 
 
