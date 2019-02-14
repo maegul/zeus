@@ -1,0 +1,35 @@
+
+ ☐ Functions for checking data and output paths, and, changing them (for file mobility)
+ ☐ Functions for 
+   ✔ updating, @done (19-02-05 01:41)
+   ☐ encoding and 
+   ☐ checking the meta data of a run on a cell
+   
+   ☐ Project
+     shared function between athena and zeus, given particular project Title, Description generate ... 
+       ☐ Unique Identifier (hash? of title, description and date time of creation?)
+       ☐ Abbreviated title (user provided?)
+     to be used in file names
+     ☐ Once generated, can pass a file reference or object to either a zeus or athena object to attach an associated with the project
+
+   ☐ Cell identity:
+     * Experiment (ie MBC23)
+     * Unit
+     * Cell (cluster label or cell number within single recording)
+   ☐ Meta Data
+     * Track number (where relevant)
+   ☐ Stim Data
+     * Needs to be dynamically updated to the needs of the stimulus
+
+ ☐ Additionally, each summary statistic analysed by athena has the metadata of which run it is from
+   also need to make sure that there is the possibility for multiple summary statistics
+
+ ☐ Documentation for tuning plotting function
+     
+
+
+Good to have:
+  ☐ change methods to no underscore, and attributes to Capital
+    Should be possible with a good regex
+  ☐ Class decorator that saves each method argument as a parameter
+    Basically, a decorator that alters each method of the class (much like a function decorator) to inspect the arguments and store them in a class attribute

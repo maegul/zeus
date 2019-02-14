@@ -1,0 +1,14 @@
+bin_width,0.035
+biphasic,True
+condition_type,orientation
+condition_unit,Deg
+conditions,9
+data_label,ori_test
+directory,./Zeus_proto_files/
+ops_directory,/Users/errollloyd/Dropbox/Science/scripts/pyth/zeus
+sdf_alpha,0.05
+sdf_number_bootstrap,2000
+sdf_sigma,3
+stimulus,bar
+stimulus_length,5.0867000000000075
+trials,10

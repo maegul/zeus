@@ -1,3 +1,6 @@
+import pathlib as pthl
+# import inspect
+# from pprint import pprint
 
 import math
 import numpy as np
@@ -8,6 +11,8 @@ import h5py # for importing matlab files formatted after version 7.3
 import scipy.stats as stats
 from scipy.ndimage import gaussian_filter1d
 import numpy.fft as fft
+
+
 
 # import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -20,6 +25,23 @@ import os
 import glob
 
 import pickle
+
+from . import hermes
+from . import hephaistos as heph
+from . import athena
+
+
+def load_data(data_source, mode, cell_no=None):
+	'''
+	Wrapper around loading functions for all loading
+	'''		
+
+	if mode == 'txt':
+		return load_raw_data(data_source, matlab=False)
+	elif mode == 'matlab':
+		return load_raw_data(data_source, matlab=True)
+	elif mode == 'heph':
+		return load_hephaistos(data_source, cell_no=cell_no)
 
 def load_raw_data(dir, matlab=False):
 	
@@ -174,23 +196,7 @@ def load_hephaistos(heph_unit, cell_no=None):
 	data['shape_SEM'] = heph_unit.SpikeSem.loc[cell_no, :].values
 
 
-
-
-
-
-
-		
-def save(dataset):
-	"""
-	Pickles a class instantiation of `Zeus`
-	"""
-	
-	directory = dataset.parameters['directory']
-	data_label = dataset.parameters['data_label']
-	
-	
-	with open('%s%s_object.pkl'%(directory, data_label), 'wb') as f:
-		pickle.dump(dataset, f)
+	return data
 		
 
 def load(file_path):
@@ -380,16 +386,17 @@ def bootstrap(data, alpha=0.05, n_bootstrap = 2000, func=None, **func_args):
 
 
 	return CI_pos, CI_neg
-	
 
+	
 
 ## Class Definitions
 
-class Zeus:
+class Themis:
 	
 	
 	
-	def __init__(self, data_path, meta_data = None, cell_no = None, matlab=False):
+	def __init__(self, data_path = None, output_path = '.', 
+		data_mode='matlab', cell=None):
 		
 		"""
 		Instatiates the output of `zeus.load` as self.data.
@@ -403,19 +410,53 @@ class Zeus:
 		Parameters
 		_________
 
-		data_label
+		data_path : path / str / Hephaistos object
+			Path to Hephaistos object or pickle, or
+			Path to directory containing relevant data files 
+
+		data_mode : str
+			Relevant only if not using hephaistos objects or save files
+			But instead using spike 2 matlab files or txt files directly
+
+			'matlab' or 'txt', to define what kind of data to load
 		
 		"""
-		
+
 		# Load files and assign to attributes
 		
 		# Treat Hephaistos object differently 
+		
+		# Check if data_path is hephaistos object
 		if data_path.__class__.__name__ == 'Hephaistos':
-			self.data = load_hephaistos(data_path, cell_no=cell_no)
+			# Take data directly from hephaistos object
+			self.data = load_data(data_path, 'heph', cell_no=cell)
 
+		# If not, treat as path / str
 		else:
-			# Old style txt data loading
-			self.data = load_raw_data(data_path, matlab=matlab)
+			self.Data_path = pthl.Path(data_path).absolute()
+			assert self.Data_path.exists(), f'Does not exist; data_path: {self.Data_path}'
+
+			# If path is to a pkl file, treat as a hephaistos save file
+			if self.Data_path.suffix == '.pkl':
+				unit = heph.load(self.Data_path)
+				self.data = load_data(unit, 'heph', cell)
+
+			# If a directory, then treat as directory of txt or matlab data files
+			elif self.Data_path.is_dir():
+
+				self.data = load_data(data_path, data_mode)
+
+
+
+		self.Output_path = pthl.Path(output_path)
+
+		self._absolute_paths = {}
+		self._absolute_paths['Output_path'] = self.Output_path.absolute()
+
+		if not self.Output_path.absolute().is_dir():
+			self.Output_path.absolute().mkdir()
+
+
 
 
 		
@@ -446,27 +487,193 @@ class Zeus:
 			pass
 
 
-		curr_dir = os.getcwd()
 		self.parameters = {}
 		
-		self.parameters['directory'] = dir
-		self.parameters['ops_directory'] = curr_dir
+
+
+		# self.parameters['ops_directory'] = curr_dir
 
 		# assert type(meta_data) == dict, 'meta data should be a ditionary from athena'
 		
-		self.meta_data = meta_data
 		
-		if (self.parameters['directory'][:3] == '../') or (self.parameters['directory'][:2] == './'):
-			print('\n\nFull directories should be employed for more accurate data records \n\n')
-		
+		print('\n\n*********\n')	
 		print ('\nRun the following methods:'
 				'\n self.sort() - to sort trials and generate PSTHs.'
 				'\n self.conditions() - to generate and define condition descriptions and labels'
 				'\nself._analyse() - to extract out the relevant measurement of response amplitude for each condition\n\n'
 				'Saving and plotting functions may then be used.')
+
+	def _assign_project(self, project):
+		'''
+		Accepts a path, or an Athena object to attach and assign a project
+		to this themis object
+
+		Parameters
+		______
+		project : Athena object | str (path)
+			The athena object for the project, or a str providing the path to the 
+			pickled object.
+		'''
+
+		if project.__class__.__name__ == 'Athena':
+			# pull out project ID
+
+			self.PROJ_ID = project.PROJ_ID
+			# take path of
+			self.PROJ_PATH = project.path
+			self.ATHENA_PATH = project.SavePath
+
+			self._PROJ_PATH_ABSOLUTE = project._absolute_paths['path']
+			self._ATHENA_PATH_ABSOLUTE = project._absolute_paths['SavePath']
+
+
+		# elif isinstance(project, str):
+		else:
+			try:
+
+				athena_path = pthl.Path(project)
+
+				with open(athena_path, 'rb') as f:
+					project = pickle.load(f)
+
+				self.PROJ_ID = project.PROJ_ID
+				# take path of
+				self.PROJ_PATH = project.path
+
+				self._PROJ_PATH_ABSOLUTE = project._absolute_paths['path']
+				self._ATHENA_PATH_ABSOLUTE = project._absolute_paths['SavePath']
+
+			# Catching all exceptions :(
+			except:
+				print((
+					f'Could not treat project as path or string\n'
+					f'Type of project {type(project)}\n'
+					f'No project assigned'
+					))
+
+
+
+		# Check if athena and themis are pointing to same directory
+		# Using absolute of proj path, as paths may simply be '.', which is ok for
+		# internal use, but, as athena and its path should already have been established
+		# we use it as the reference and test for having the same output path is it
+
+		if self.Output_path.absolute() != self._PROJ_PATH_ABSOLUTE:
+			print((f'Themis output path ("{self.Output_path.absolute()}")'
+				f'is not same as project path ("{self._PROJ_PATH_ABSOLUTE}")'
+				))
+
+		assert pthl.Path.cwd() == self.Output_path.absolute(), (
+			f'Current path ("{pthl.Path.cwd()}") is not same as'
+			f'Output path ("{self.Output_path.absolute()}")'
+			'You should be working in the output path once coupling with a project!'
+			)
+
+
+
+	def _cell_ID(self, force = False, 
+		experiment = None, unit = None, cell = None, run = None):
+
+
+		cell_id = hermes.mk_cell_ID(
+			experiment = experiment, unit=unit, cell=cell, run = run
+			)
+
+		self.CELL_KEY = f'{experiment}u{unit}c{cell}r{run}'
+
+
+		if hasattr(self, 'PROJ_ID'):
+			with open(self.ATHENA_PATH, 'rb') as f:
+				athena_obj = pickle.load(f) 
+
+			# Check if stim and cell dataset exists
+			if hasattr(athena_obj, 'CellData'):
+
+				# Check for repeats
+				checkResult = hermes.checkCellData(cell_id, athena_obj.CellData, splitDataSet=True)
+
+				if (force or checkResult):
+					self.CELL_ID = cell_id
+
+				else:
+					print('potential redundancies, stim params NOT assigned')
+					
+			else:
+				print('Athena has not cell data yet; stim params assigned')
+				self.CELL_ID = cell_id
+		else:
+			print('No project assigned, stim params assigned')
+			self.CELL_ID = cell_id
+
+
+		# Assign cell ID
+		self.CELL_ID = hermes.mk_cell_ID(
+			experiment = experiment, unit=unit, cell=cell, run = run
+			)
+
+
+
+	def _stim_params(self, force=False, **kwargs):
+		'''
+		Update stimulus meta data in addition to the conditions of each test
+		kwargs are a intended to be an exhaustive list of options
+		'''
+		# args = inspect.getargvalues(inspect.currentframe())
+
+		stim_params = hermes.mk_stim_params(**kwargs)
+
+		# Assigned projected?
+		if hasattr(self, 'PROJ_ID'):
+			with open(self.ATHENA_PATH, 'rb') as f:
+				athena_obj = pickle.load(f) 
+
+			# Check if stim and cell dataset exists
+			if hasattr(athena_obj, 'CellData'):
+
+				# Check for repeats
+				checkResult = hermes.checkStimParams(stim_params, athena_obj.CellData, splitDataSet=True)
+
+				if (force or checkResult):
+					self.STIM_PARAMS = stim_params
+					
+			else:
+				print('Athena has no cell data yet')
+				self.STIM_PARAMS = stim_params
+		else:
+			print('No project assigned')
+			self.STIM_PARAMS = stim_params
+
+
+
+
+
+	def _stim_params_print(self):
+
+		if hasattr(self, 'STIM_PARAMS'):
+
+			print('Stimulus Parameters\n')
+
+			hermes.show_info(self.STIM_PARAMS)
+
+		else:
+			print('Stim params not set yet ... use self._stim_params')
+
+
+	def _cell_id_print(self):
+
+		if hasattr(self, 'CELL_ID'):
+
+			print('Cell and Experiment ID:\n')
+
+			hermes.show_info(self.CELL_ID)
+
+		else:
+			print('No cell ID!!')
+
+
+
 		
-		
-	def _sort(self, conditions = 9, trials = 10, stim_len = None,
+	def _sort(self, use_codes = False, conditions = 9, trials = 10, stim_len = None,
 			  bin_width=0.02, auto_spont=False, sigma=3, alpha=0.05, 
 			  n_bootstrap=2000):
 		
@@ -478,11 +685,18 @@ class Zeus:
 		
 		Parameters
 		__________
+		use_codes : boolean
+			Instead of identifyin amount of conditions and trials, use the marker 
+			codes to derive these numbers.
+			Must have marker codes from the data source
+			If True, "conditions" and "trials" are ignored
+
 		conditions : int
 			Amount of stimulus conditions in the experiment.
 			
 		trials : int
 			Amount of trials of each condition in the experiment.
+			Each condition must have the same amount of trials.
 			
 		stim_len : float, optional
 			Default is `None`.
@@ -521,11 +735,13 @@ class Zeus:
 		self.conditions_trials : dict of lists
 			Three dimensional array containing the REAL spike times of 
 			each trial of each condition.
+			Keys are the codes of the actual conditions
 			
 		self.conditions_trials_zeroed : dict of lists
 			Three dimensional array containing the spike times, relative to the
 			commencement of the relevant trial, of each trial of each 
 			condition.
+			Keys are the codes of the actual conditions
 			
 		self.parameters : dict, pre-instantiated
 			'conditions' (Number of conditions)
@@ -540,7 +756,7 @@ class Zeus:
 		self.conditions_trials_hist : array (3-D)
 			PSTH/histograms for each trial for each condition.  
 			Provides spike counts for each trial
-			First dimension (axis=0) - conditions
+			First dimension (axis=0) - conditions (numerical: range(conditions.size))
 			Second dimension (axis=1) - trials
 			Third dimension (axis=2) - bins (or time)
 			
@@ -573,6 +789,25 @@ class Zeus:
 
 		"""
 		# Loading parameters to parameters dictionary
+
+		if use_codes:
+			assert self.marker_codes.size, 'No marker codes from data source, cannot use codes'
+
+			conds, cond_counts = np.unique(self.marker_codes, return_counts=True)
+
+			assert np.all(cond_counts == cond_counts[0]), (
+				'Not all conditions have the same amount of trials according to marker codes'
+				)
+
+			conditions = conds.size
+			trials = cond_counts[0]
+
+		else:
+			# useful for iterating later in the function
+			# start at 1, +1 to get to last condition
+			conds = np.arange(1, conditions+1)
+
+
 		self.parameters['conditions'] = conditions
 		self.parameters['trials'] = trials
 
@@ -589,50 +824,73 @@ class Zeus:
 		assert self.markers.size == (conditions * trials), (
 			'The number of recorded markers' 
 			'does not match your dataset specifications.'
-			'\n#Conditions * #trials != #markers.\n'
+			f'\n#Conditions ("{conditions}") * #trials ("{trials}") != #markers ("{self.markers.size}").\n'
 			'Markers will probably have to be inserted.  Run self._marker_diag() to diagnose')
+
+		# If marker codes generated by data source
+		if self.marker_codes.size:
+			assert self.markers.size == self.marker_codes.size, (
+				f'Number of markers ("{self.markers.size}") != number of marker codes ("{self.marker_codes.size}") '	
+				)
 		
 		
 		# determine stimulus length
 		if stim_len:
 			self.parameters['stimulus_length'] = float(stim_len)
 		else:
-			marker_diff = np.subtract( self.markers[1:], self.markers[:-1])
-			stim_len = np.max( marker_diff)
-			
+			stim_diffs = np.diff(self.markers)
+			stim_len = np.max(stim_diffs)
 			self.parameters['stimulus_length'] = stim_len
 			
 			print('\nstimulus length has been calculated from the set of markers; ' 
 				  'taking the maximum distance between all adjacent pairs of markers')
+			print(f'Calculated Stim Len (max): {stim_len}\nMean Stim Len: {np.mean(stim_diffs)}\nMedian Stim Len: {np.median(stim_diffs)}')
 			
 		
+
+		# If no markcodes, make synthetic marker codes
+		if not self.marker_codes.size:
+
+			self.marker_codes = (
+
+				# reshape to enable broadcasting for repeats
+				conds.reshape(1, conditions)
+				* np.ones((trials, conditions)) # trials dimension will have the conditions from the arange broadcast along it (ie, repeated)
+				
+				).flatten().astype('uint8')
+
+
 		# Initialising 
+
 		self.conditions_trials = {}
 		self.conditions_trials_zeroed = {}
-		
-		## Sorting into trials and conditions 
-		# one condition at a time
-		for c in range(conditions):
-			
-			ct = [] # temp for condition_trials
-			ctz = [] # temp for condition_trials_zeroed
-			
-			# one trial at a time
-			for t in self.markers[c::conditions]: # Goes thorugh every trial of each condition
-				
-				# extract spike times for each trial
-				trial = np.extract( (self.spikes >= t) & (self.spikes < (t+stim_len)), 
-								   self.spikes)
-				
-				# produces list of all spike times for the condition, each trial listed
-				# consecutively
-				ct.append(trial)
-				# zero to trial onset
-				ctz.append( (trial - t))
-				
-			# list of spike times listed in dictionary and keyed by condition number    
-			self.conditions_trials[c] = ct
-			self.conditions_trials_zeroed[c] = ctz
+
+
+		for c in conds:
+			# these dictionaries are now keyed by the actual codes for the conditions
+			self.conditions_trials[c] = []
+			self.conditions_trials_zeroed[c] = []
+
+		cond_range = range(conds.size)
+		# as conds are the actual codes used, this dictionary converts
+		# from numerical index (from zero upward) to actual code used
+		self.condition_code_idx_convert = {cond_range[i]:conds[i] for i in range(conds.size)}
+
+		# Iterate through each marker
+		for i, t in enumerate(self.markers):
+
+			# extract spike times for each trial
+			trial = np.extract( (self.spikes >= t) & (self.spikes < t+stim_len), 
+								self.spikes )
+			# Also zero to beginning of trial
+			trial_zeroed = trial - t
+
+			# condition identify from marker codes
+			cond = self.marker_codes[i]
+
+			# Append both trials and zeroed trials to conditions dictionary
+			self.conditions_trials[cond].append(trial)
+			self.conditions_trials_zeroed[cond].append(trial_zeroed)
 			
 #==============================================================================
 # Generating PSTHs
@@ -640,27 +898,24 @@ class Zeus:
 	
 		self.bin_width = bin_width
 		
-		
 		# bin boundaries, in time.  Fundamental to basic PSTH analysis and so made an attribute
 		self.bins = np.arange(0, stim_len, bin_width)
 		
-		n_con = conditions
-		n_trial = trials
 		
 		# Initialising.  Will contain, for each condition, a PSTH for each trial
-		self.conditions_trials_hist = np.zeros((n_con, n_trial, self.bins.size - 1))
+		self.conditions_trials_hist = np.zeros((conditions, trials, self.bins.size - 1))
 		
 		# One condition, and trial, at a time
-		for c in range(n_con):
+		for ic,c in enumerate(conds):
 			
-			trials_hist = np.zeros((n_trial, self.bins.size - 1))
+			trials_hist = np.zeros((trials, self.bins.size - 1))
 			
-			for t in range(n_trial):
+			for t in range(trials):
 				
 				trials_hist[t] = np.histogram(self.conditions_trials_zeroed[c][t], self.bins)[0]
 				
 			# PSTH for each trial added for the condition    
-			self.conditions_trials_hist[c] = trials_hist
+			self.conditions_trials_hist[ic] = trials_hist
 			
 		# Average and Standard Error, for each bin, calculated across the trials (second axis)    
 		self.conditions_hist_mean = np.mean(self.conditions_trials_hist, axis=1)
@@ -775,13 +1030,9 @@ class Zeus:
 			
 		return output
 			
-
-			
-			
-			 
 			 
 
-	def _conditions(self, beg=-90, intvl=20, con_type='orientation', stim='bar', 
+	def _conditions(self, beg=-90, intvl=20, con_type='ori', stim='bar', 
 					biphasic=True, unit='deg', con_list=[], temp_freq = 2):
 						
 		"""Generates condition and stimulus descriptions both as numbers and strings.
@@ -841,7 +1092,7 @@ class Zeus:
 		"""
 		
 		
-		con_types = ['orientation', 'spat_freq', 'temporal_freq', 'chromatic']
+		con_types = ['ori', 'spat_freq', 'temporal_freq', 'chromatic']
 		stims = ['bar', 'grating']
 		
 		
@@ -891,14 +1142,16 @@ class Zeus:
 		self.cond_label = []
 
 		
-		def circ(ori):
+		def circ(ori, bound = 360):
 			"""Func that Ensures all orientation values are between 0 and 360 degrees.
 			"""
-			ori[ori<-360] += 720
-			ori[ori<0] += 360
-			ori[ori>360] -= 360
-			ori[ori>720] -= 720
-			return ori
+			# ori[ori<-360] += 720
+			# ori[ori<0] += 360
+			# ori[ori>360] -= 360
+			# ori[ori>720] -= 720
+
+
+			return ori % bound
 
 		# if list of conditions provided directly
 		if len(con_list) > 0:
@@ -1011,6 +1264,8 @@ class Zeus:
 					label = '%s %s' %(self.conditions[c],
 									  self.parameters['condition_unit'])
 					self.cond_label.append(label)
+
+
 
 
 
@@ -1149,11 +1404,10 @@ class Zeus:
 							  
 				# Column labels for pd.dataframe of tuning data
 				# Percentage of confidence intervals
-				ci_perc = (100 * (1 - self.parameters['sdf_alpha']))
+				# ci_perc = (100 * (1 - self.parameters['sdf_alpha']))
 				
 				# Labels
-				idx = ['Conditions (%s)'% self.parameters['condition_unit'], 
-					   'Peak Resp', 'Neg CI (%s%%)'%ci_perc, 'Pos CI (%s%%)'%ci_perc, 'biphas_id']
+				idx = ['condition', 'max_resp', 'neg_CI', 'pos_CI', 'biphas_id']
 				
 				# Pandas object, with transpose of tuning array to data frame object       
 				self.cond_tuning_pd = pd.DataFrame(self.cond_tuning.transpose(), columns=idx)
@@ -1182,9 +1436,10 @@ class Zeus:
 				
 				
 				# Column labels for pd.dataframe of tuning data
-				ci_perc = (100 * (1 - self.parameters['sdf_alpha']))
-				idx = ['Conditions (%s)'% self.parameters['condition_unit'], 
-					   'Peak Resp', 'Neg CI (%s%%)'%ci_perc, 'Pos CI (%s%%)'%ci_perc]
+				# ci_perc = (100 * (1 - self.parameters['sdf_alpha']))
+
+				idx = ['condition', 'max_resp', 'neg_CI', 'pos_CI', 'biphas_id']
+
 					   
 				# transpose of tuning array to data frame object       
 				self.cond_tuning_pd = pd.DataFrame(self.cond_tuning.transpose(), columns=idx)
@@ -1263,12 +1518,12 @@ class Zeus:
 			self.cond_tuning[1:-1,:] *= (1/self.bin_width)
 			
 			# Column labels for pd.dataframe of tuning data
-			ci_perc = (100 * (1 - self.parameters['fft_alpha']))
-			idx = ['Conditions (%s)'% self.parameters['condition_unit'], 
-				   'F0', 'F0 Pos CI (%s%%)'%ci_perc, 'F0 Neg CI (%s%%)'%ci_perc, 
-				   'F1', 'F1 Pos CI (%s%%)'%ci_perc, 'F1 Neg CI (%s%%)'%ci_perc,
-				   'F2', 'F2 Pos CI (%s%%)'%ci_perc, 'F2 Neg CI (%s%%)'%ci_perc,
-				   'F1/F0 Ratio']
+			# ci_perc = (100 * (1 - self.parameters['fft_alpha']))
+			idx = ['conditions', 
+				   'F0', 'F0_pos_CI', 'F0_neg_CI', 
+				   'F1', 'F1_pos_CI', 'F1_neg_CI',
+				   'F2', 'F2_pos_CI', 'F2_neg_CI',
+				   'F1/F0_ratio']
 			# transpose of tuning array to data frame object       
 			self.cond_tuning_pd = pd.DataFrame(self.cond_tuning.transpose(), columns=idx)
 		
@@ -1281,6 +1536,16 @@ class Zeus:
 			self.cond_tuning = self.cond_tuning[:,self.cond_tuning[0].argsort()]
 			self.cond_tuning_pd.sort_values(self.cond_tuning_pd.columns[0], inplace=True)
 
+
+		assert hasattr(self, 'CELL_ID'), 'Make Cell ID first'
+
+		self.cond_tuning_pd.insert(0, 'key', self.CELL_KEY)
+		self.cond_tuning_pd.set_index('key', inplace=True)
+
+		self.cond_tuning_pd.insert(0, 'cond_type', self.parameters['condition_type'])
+		self.cond_tuning_pd.insert(1, 'cond_unit', self.parameters['condition_unit'])
+
+
 		
 		
 	def _out(self):
@@ -1289,22 +1554,52 @@ class Zeus:
 		
 		Saves experimental parameters and the condition tuning dataset, in Pandas form.
 		'''
-		directory = self.parameters['directory']
+		directory = self.Output_path # should be pathlib path
 		data_label = self.parameters['data_label']
 		con_type = self.parameters['condition_type']
+
+		parameters_path = directory / (data_label + '_parameters.csv')
+		tuning_path = directory / (data_label + '_' + con_type + '_tuning.csv')
 		
 		# Save parameters to csv
 		param = pd.Series(self.parameters)
-		with open('%s%s_parameters.csv'%(directory, data_label), 'w') as f:
+		with open(parameters_path, 'w') as f:
 			param.to_csv(f)
 		
 		
-		with open('%s%s_%s_tuning.csv'%(directory, data_label, con_type), 'w') as f:
+		with open(tuning_path, 'w') as f:
 			self.cond_tuning_pd.to_csv(f)
 			
 		## Other files to save etc
 			# PSTH trial and means and SDF - pd with multiindexing and excel write?
 			# make convenience functions for reading particular files?
+
+
+	def _save(self):
+
+		"""
+		Pickles a class instantiation of `Zeus`
+		"""
+		
+		directory = self.Output_path
+
+		file_name = f'Themis_{self.CELL_ID["experiment"]}_u{self.CELL_ID["unit"]}_c{self.CELL_ID["cell"]}_r{self.CELL_ID["run"]}.pkl'
+
+		save_path = directory / file_name
+
+		# Atomic saving (helpful?)
+		temp_path = save_path.with_suffix(save_path.suffix + '.tmp')
+		
+		self.SavePath = save_path
+
+		
+		with open(temp_path, 'wb') as f:
+			pickle.dump(self, f)
+
+		temp_path.rename(save_path)
+
+
+
 			
 	def _plot_psth(self, plot_type = 'hist', frequency = True, 
 				   smooth = False, smooth_type = 'gauss', sigma = 3, 
@@ -1355,7 +1650,8 @@ class Zeus:
 		assert smooth_type.lower() in ['gauss', 'mov_avg'], ('Smoothing type invalid, select '
 															'either "gauss" or "mov_avg"')
 		# Generate smoothed curves                                        
-		if smooth:
+		def mkSmooth():
+
 			if smooth_type.lower() == 'gauss':
 				# Gaussian smoothing 
 				spd = gaussian_filter1d(self.conditions_hist_mean, sigma, axis=1)
@@ -1364,6 +1660,8 @@ class Zeus:
 				# Moving average smoothing
 				spd = sp.ndimage.convolve1d(self.conditions_hist_mean,
 											np.ones((sigma))/float(sigma), axis=1) 
+
+			return spd
 
 			
 
@@ -1404,8 +1702,9 @@ class Zeus:
 				
 
 				if smooth:
+					spd = mkSmooth()
 					ax.plot(self.bins[:-1] + 0.5*bin_width, spd[c], 
-							linestyle='-', color='FireBrick', linewidth=4, alpha=0.8, 
+							linestyle='-', color='Coral', linewidth=4, alpha=0.8, 
 							zorder=3)
 					
 			# convert ylabl to frequency units
@@ -1453,8 +1752,9 @@ class Zeus:
 	
 	
 				if smooth:
+					spd = mkSmooth()
 					ax.plot(self.bins[:-1] + 0.5*bin_width, spd[c], 
-							linestyle='-', color='FireBrick', linewidth=3, alpha=0.8, 
+							linestyle='-', color='Coral', linewidth=3, alpha=0.8, 
 							zorder=3)
 	
 	
@@ -1533,7 +1833,11 @@ class Zeus:
 		con_mark = np.arange(0, (self.bins.size -1) * n_con, self.bins.size -1)
 				
 		ax.xaxis.set_ticks(con_mark)
-		ax.xaxis.set_ticklabels(self.cond_label)
+
+		try:
+			ax.xaxis.set_ticklabels(self.cond_label)
+		except:
+			ax.xaxis.set_ticklabels(np.unique(self.marker_codes))
 		
 		freq_label = np.round(ax.get_yticks() * (1/self.bin_width),
 							  decimals = 1)
@@ -1617,6 +1921,7 @@ class Zeus:
 		# take whole data set for bar stimuli        
 		if self.parameters['stimulus'] == 'bar':
 			data = self.cond_tuning
+
 
 		#==============================================================================
 		# Plot Orientation tuning

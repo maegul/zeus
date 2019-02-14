@@ -792,6 +792,8 @@ class Hephaistos:
 		elif pthl.Path(file_name).suffix != '.pkl':
 			file_name = self.Data_path.parent / pthl.Path(file_name).with_suffix('.pkl')
 
+		self.SavePath = file_name.absolute()
+
 		with open(file_name, 'wb') as f:
 			pickle.dump(self, f)
 
