@@ -609,7 +609,63 @@ class Themis:
 
 
 
-		
+	def _stim_params(self, force=False, **kwargs):
+		'''
+		Update stimulus meta data in addition to the conditions of each test
+		kwargs are a intended to be an exhaustive list of options
+		'''
+		# args = inspect.getargvalues(inspect.currentframe())
+
+		stim_params = hermes.mk_stim_params(**kwargs)
+
+		# Assigned projected?
+		if hasattr(self, 'PROJ_ID'):
+			with open(self.ATHENA_PATH, 'rb') as f:
+				athena_obj = pickle.load(f) 
+
+			# Check if stim and cell dataset exists
+			if hasattr(athena_obj, 'CellData'):
+
+				# Check for repeats
+				checkResult = hermes.checkStimParams(stim_params, athena_obj.CellData, splitDataSet=True)
+
+				if (force or checkResult):
+					self.STIM_PARAMS = stim_params
+					
+			else:
+				print('Athena has no cell data yet')
+				self.STIM_PARAMS = stim_params
+		else:
+			print('No project assigned')
+			self.STIM_PARAMS = stim_params
+
+
+
+
+
+	def _stim_params_print(self):
+
+		if hasattr(self, 'STIM_PARAMS'):
+
+			print('Stimulus Parameters\n')
+
+			hermes.show_info(self.STIM_PARAMS)
+
+		else:
+			print('Stim params not set yet ... use self._stim_params')
+
+
+	def _cell_id_print(self):
+
+		if hasattr(self, 'CELL_ID'):
+
+			print('Cell and Experiment ID:\n')
+
+			hermes.show_info(self.CELL_ID)
+
+		else:
+			print('No cell ID!!')
+
 	def _sort(self, use_codes = False, conditions = 9, trials = 10, stim_len = None,
 			  bin_width=0.02, auto_spont=False, sigma=3, alpha=0.05, 
 			  n_bootstrap=2000):
@@ -1201,45 +1257,6 @@ class Themis:
 					label = '%s %s' %(self.conditions[c],
 									  self.parameters['condition_unit'])
 					self.cond_label.append(label)
-
-
-	def _stim_params(self, **kwargs):
-		'''
-		Update stimulus meta data in addition to the conditions of each test
-		kwargs are a intended to be an exhaustive list of options
-		'''
-		# args = inspect.getargvalues(inspect.currentframe())
-
-		
-
-		self.STIM_PARAMS = hermes.mk_stim_params(**kwargs)
-
-
-
-	def _stim_params_print(self):
-
-		if hasattr(self, 'STIM_PARAMS'):
-
-			print('Stimulus Parameters\n')
-
-			hermes.show_info(self.STIM_PARAMS)
-
-		else:
-			print('Stim params not set yet ... use self._stim_params')
-
-
-	def _cell_id_print(self):
-
-		if hasattr(self, 'CELL_ID'):
-
-			print('Cell and Experiment ID:\n')
-
-			hermes.show_info(self.CELL_ID)
-
-		else:
-			print('No cell ID!!')
-
-
 
 
 	def _analyse(self, source='sdf', alpha = 0.05, n_bootstrap = 2000, biphas_split_point = 0.5):
