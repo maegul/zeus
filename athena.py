@@ -16,6 +16,24 @@ from . import hermes
 from . import themis
 
 
+
+
+def load(file_path):
+	"""
+	Un-Pickles a data object
+	
+	Parameters
+	__________
+	file_path : string
+		File path of the pickled file to be unpickled
+	"""
+	assert type(file_path) == str, 'File_path must be a string'
+	
+	with open(file_path, 'rb') as f:
+		return pickle.load(f)
+		
+		
+
 class Athena:
 
 	def __init__(self, name = None, description = None, path = '.'):
