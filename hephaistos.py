@@ -10,7 +10,10 @@ import pathlib as pthl
 from pprint import pprint
 import pickle
 
-from pyth.zeus import spk2_mat_read as spkmr
+from . import spk2_mat_read as spkmr
+
+from .utils import funcTracker, getMethods
+
 import neo
 import quantities as qnt
 
@@ -51,6 +54,8 @@ def doc_string_add(inserted_func):
 	return wrapper
 
 
+
+
 def load(filename):
 	with open(filename, 'rb') as f:
 		loadedUnit = pickle.load(f)
@@ -69,6 +74,59 @@ class Hephaistos:
 
 	'''
 	'''
+
+	def __repr__(self):
+
+		methods = getMethods(Hephaistos)
+
+		# List of methods to report, in order of preferred/necessary execution
+		method_report = [
+			'readSpkMat',
+			'readBasicSpkMat',
+			'mkRawBin',
+			'tdcInit',
+			'tdcPreProcess',
+			'tdcSetUpCatalogue',
+			'tdcCatPCAClust',
+			'tdcPeel',
+			'tdcExtractSpikes'			
+
+		]
+
+		conditional_methods = {
+			'readBasicSpkMat' : 'writeWaveClusMat',
+			'mkRawBin' : 'quickView',
+			'tdcCatPCAClust' : [
+				'tdcFindBetterBounds',
+				'tdcViewPCA',
+				'tdcOpenCatalogue'
+				],
+			'tdcPeel' : 'tdcOpenPeeler'
+		}
+
+		rep = ''
+
+		for m in method_report:
+
+			if m in methods:
+
+				rep += '{0}\t{1}()\n'.format(
+					u"\u2705" if m in self._function_tracking else u"\u274c",
+					m
+					)
+
+			if m in conditional_methods:
+				condMethods = conditional_methods[m]
+				if isinstance(condMethods, list):
+					for cm in condMethods:
+						rep += '\t\t{0}()\n'.format(cm)
+				else:
+					rep += '\t\t{0}()\n'.format(condMethods)
+
+
+		return rep
+
+
 
 	def __init__(self, data_path=''):
 
@@ -91,6 +149,11 @@ class Hephaistos:
 			data_path : str
 				path to data file
 		'''
+
+		# tracking function executions
+		# Useful for repr and user guidance
+		self._function_tracking = dict()
+
 
 		self.Data_path = pthl.Path(data_path).absolute()
 
@@ -137,6 +200,7 @@ class Hephaistos:
 		# How manage paths?
 			# Want to be able to easily pull out containing folders
 
+	@funcTracker
 	@doc_string_add(spkmr.spk2MatRead.__init__)
 	def readSpkMat(self, **kwargs):
 
@@ -156,6 +220,7 @@ class Hephaistos:
 		self.MarkTimes = self.Dat.MarkTimes
 		self.MarkCodes = self.Dat.MarkCodes
 
+	@funcTracker
 	@doc_string_add(spkmr.basicMatRead.__init__)
 	def readBasicSpkMat(self, **kwargs):
 
@@ -186,7 +251,7 @@ class Hephaistos:
 
 
 
-
+	@funcTracker
 	def mkRawBin(self, channel = 'Ch1', filename = None, backend = 'neo', overwrite = False,
 					dtype = None, nb_channel = 1, comment = ''):
 		'''
@@ -356,7 +421,7 @@ class Hephaistos:
 		
 
 
-
+	@funcTracker
 	def tdcInit(self, channel='Ch1'):
 		'''
 		DataIO directory and DataIO creation
@@ -410,6 +475,7 @@ class Hephaistos:
 			print(self.TDCDataIO)
 
 
+	@funcTracker
 	@doc_string_add(CatalogueConstructor.set_preprocessor_params)
 	def tdcPreProcess(self, peak_sign='-', relative_threshold=5, highpass_freq=300, 
 		lowpass_freq=5000, noiseEstimateDuration = 10, catalogue_duration=400,
@@ -451,7 +517,7 @@ class Hephaistos:
 		pprint(self.TDCCatConstructor.info)
 
 
-
+	@funcTracker
 	def tdcSetUpCatalogue(self, n_left=-30, n_right=30, align_waveform=True, 
 		alien_value_threshold = 100):
 		'''
@@ -480,7 +546,7 @@ class Hephaistos:
 
 
 
-
+	@funcTracker
 	def tdcCatPCAClust(self, n_pca_components = 7, pca_method = 'global_pca',
 		clust_method = 'kmeans', n_clusters=5):
 
@@ -568,6 +634,8 @@ class Hephaistos:
 		win.show()
 		app.exec_()
 
+
+	@funcTracker
 	def tdcPeel(self):
 		'''
 		Set up peeler, with catalogue, and run
@@ -603,6 +671,7 @@ class Hephaistos:
 		app.exec_()
 
 
+	@funcTracker
 	def tdcExtractSpikes(self, merge_multi_unit = False, multi_unit_clusters = None,
 		multi_unut_annot = 'mu', identify_collisions = True, collision_threshold = 10,
 		filter_early_late = True):
