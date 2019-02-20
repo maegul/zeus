@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 from scipy.io.matlab import savemat
 from scipy.stats import sem
+from scipy import signal as sp_signal
 
 from matplotlib import pyplot as plt
 
@@ -353,7 +354,8 @@ class Hephaistos:
 			self.RawBinChans.updateChannel(channel, {'written': True})
 
 
-	def quickView(self, channel = 'Ch1', limit = 10000, viewLimit = 2):
+	def quickView(self, channel = 'Ch1', limit = 10000, viewLimit = 2,
+		filter=False, low_cut=300, high_cut=3000, order=5):
 
 		'''
 		viewlimit is how many times greater the samples in full view are than limit
@@ -364,10 +366,28 @@ class Hephaistos:
 
 		assert channel in self.Dat._traceChannelNames, 'channel name not in data, check available channels with self.Dat._traceChannelNames'
 
-		# Bad to simply store the signal in memory ... could be replaced by an HDF5 read function
-		signal = self.Dat.__getattribute__(channel).GetTraceData()
 		# Sample rate
 		sr = self.Dat.__getattribute__(channel).SampleFreq
+		# Bad to simply store the signal in memory ... could be replaced by an HDF5 read function
+
+		if filter:
+
+			def butter_bandpass(lowcut, highcut, fs, order=5):
+				nyq = 0.5 * fs
+				low = lowcut / nyq
+				high = highcut / nyq
+				b, a = sp_signal.butter(order, [low, high], btype='band')
+				return b, a
+
+			b,a = butter_bandpass(low_cut, high_cut, sr, order)
+			
+			signal = sp_signal.filtfilt(
+				b, a,
+				self.Dat.__getattribute__(channel).GetTraceData()
+				)
+
+		else:
+			signal = self.Dat.__getattribute__(channel).GetTraceData()
 
 		viewLimit *= limit
 
@@ -402,16 +422,16 @@ class Hephaistos:
 		def updatePlot():
 			# getRegion returns in terms of x axis values
 			# Convert real time to number of samples
-		    idxs = [int(idx*sr) for idx in lr.getRegion()]
-		    # 
-		    viewTime = np.arange(0, (idxs[1]-idxs[0])/sr, 1/sr)
+			idxs = [int(idx*sr) for idx in lr.getRegion()]
+			# 
+			viewTime = np.arange(0, (idxs[1]-idxs[0])/sr, 1/sr)
 
-		    p2plt.setData(y = signal[idxs[0]:idxs[1]], x = viewTime)
+			p2plt.setData(y = signal[idxs[0]:idxs[1]], x = viewTime)
 
 		lr.sigRegionChanged.connect(updatePlot)
 
 		# def updateRegion():
-		    # lr.setRegion(p2.getViewBox().viewRange()[0])
+			# lr.setRegion(p2.getViewBox().viewRange()[0])
 		# p2.sigXRangeChanged.connect(updateRegion)
 
 		updatePlot()
