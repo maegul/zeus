@@ -172,8 +172,10 @@ def appendDataSet(key, cell_data, stim_data, dataSet, force=False):
 
 			return
 
+	# Prevent mutation of themis attributes!
+	cell_data = cell_data.copy()
+	cell_data.update(stim_data.copy())
 
-	cell_data.update(stim_data)
 	cell_data = pd.Series(data = cell_data, name = key)
 
 	# Relying on integrity check to prevent data being added twice
