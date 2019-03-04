@@ -906,10 +906,11 @@ class Hephaistos:
 			self.SpikeSem.loc[e] = stdErr
 
 
-		if merge_multi_unit:
+		# Recording templates and averages for the multi units
 
-			if multi_unit_clusters is None:
-				multi_unit_clusters = self.Spikes.loc[self.Spikes.annotation=='mu', 'cluster_label'].unique()
+		if merge_multi_unit or (len(multi_unit_clusters) > 0):
+			# multi_unit_clusters should be filled, if no arg passed, to be those marked with 'mu' in annotations
+
 
 			multi_unit_clusters.sort()
 
@@ -917,7 +918,11 @@ class Hephaistos:
 				self.TDCCatalogue['centers0'][multi_unit_clusters, ...]
 				)
 
-			indicesMU = self.Spikes.loc[self.Spikes.cluster_label==111, 'index']
+			# Allows for not merging multi units in Spikes table, but having a merge for mean spike shape
+			# Perhaps in future, I want average for each mu cluster, but I suppose the template can fulfill that role
+			mu_filt = (self.Spikes.annotation == 'mu') | (self.Spikes.cluster_label == 111)
+
+			indicesMU = self.Spikes.loc[mu_filt, 'index']
 			wfsMU = np.squeeze(
 				self.TDCDataIO.get_some_waveforms(spike_indexes=indicesMU, n_left=catN_Left,
 											n_right=catN_Right)
