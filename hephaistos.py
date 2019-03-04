@@ -749,34 +749,59 @@ class Hephaistos:
 
 		# get clus label for each spike
 		clus_labels = self.Spikes.cluster_label
-		# get annotation for each spike according to clus label
-		annotations = self.TDC_clusters[clus_labels]['annotations']
+		# Get indices corresponding to each clus label
+		clus_label_idxs = clus_labels.replace(self.TDCCatalogue['label_to_index'])
+
+		# get annotation for each spike according to clus label 
+		annotations = self.TDC_clusters[clus_label_idxs]['annotations']
 
 		# add annotations to Spikes DF
 		self.Spikes['annotation'] = annotations
 
 
-		###
-		# Merging Multi Units
-
-		if merge_multi_unit:
-			if multi_unit_clusters is None:
-
-				self.Spikes.loc[self.Spikes['annotation']==multi_unut_annot, 'cluster_label'] = 111
-
-			else:
-				assert isinstance(multi_unit_clusters, list), 'multi unit clusters must be a list'
-				multi_unit_spikes = self.Spikes.cluster_label.isin(multi_unit_clusters)
-				# Assign cluster 111 to multi unit (using .loc as advised by pandas)
-				self.Spikes.loc[multi_unit_spikes, 'cluster_label'] = 111
-
-
-
 		clusterLabels = self.Spikes.cluster_label.unique()
 		clusterLabels.sort()
 
+
+		###
+		# Merging Multi Units
+
+		# Generate list of multi unit clusters from annotations
+		if multi_unit_clusters is None:
+			multi_unit_index = self.Spikes['annotation']==multi_unut_annot
+			multi_unit_clusters = list(
+				self.Spikes.loc[multi_unit_index, 'cluster_label'].unique()
+				)
+
+		# Checking that all cluster labels provided are actually in spikes cluster_labels
+		else:
+			assert isinstance(multi_unit_clusters, list), 'multi_unit_clusters must be a list'
+
+			# clusters = self.Spikes.cluster_label.unique()
+
+			for muc in multi_unit_clusters:
+				assert muc in clusterLabels, f'"{muc}" not in cluster labels ({clusterLabels})'
+
+
+
+		if merge_multi_unit:
+
+			assert isinstance(multi_unit_clusters, list), 'multi unit clusters must be a list'
+
+			multi_unit_spikes = self.Spikes.cluster_label.isin(multi_unit_clusters)
+			# Assign cluster 111 to multi unit (using .loc as advised by pandas)
+			self.Spikes.loc[multi_unit_spikes, 'cluster_label'] = 111
+
+
+
+
 		# Filter out multi unit aggregation
-		nonMU_CL = clusterLabels[clusterLabels < 111]
+		nonMU_CL = [
+			cl 
+			for cl in clusterLabels
+			if cl not in multi_unit_clusters+[111] # adding 111 if any merging has occurred
+		]
+
 
 		####
 		# Identifying Collisions
