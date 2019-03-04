@@ -582,6 +582,8 @@ class Themis:
 			self._PROJ_PATH_ABSOLUTE = project._absolute_paths['path']
 			self._ATHENA_PATH_ABSOLUTE = project._absolute_paths['SavePath']
 
+			project.save()
+
 
 		# elif isinstance(project, str):
 		else:
@@ -595,9 +597,12 @@ class Themis:
 				self.PROJ_ID = project.PROJ_ID
 				# take path of
 				self.PROJ_PATH = project.path
+				self.ATHENA_PATH = project.SavePath
 
 				self._PROJ_PATH_ABSOLUTE = project._absolute_paths['path']
 				self._ATHENA_PATH_ABSOLUTE = project._absolute_paths['SavePath']
+
+				project.save()
 
 			# Catching all exceptions :(
 			except:
@@ -1494,7 +1499,7 @@ class Themis:
 				# Column labels for pd.dataframe of tuning data
 				# ci_perc = (100 * (1 - self.parameters['sdf_alpha']))
 
-				idx = ['condition', 'max_resp', 'neg_CI', 'pos_CI', 'biphas_id']
+				idx = ['condition', 'max_resp', 'neg_CI', 'pos_CI']
 
 					   
 				# transpose of tuning array to data frame object       
@@ -2113,6 +2118,9 @@ class Themis:
 			ax.set_ylabel('Response (Hz)')
 			
 			
+
+			
+
 				
 ## spontaneous rate
 				# plotting - subtract or line?
