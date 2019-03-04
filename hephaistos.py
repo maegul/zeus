@@ -656,15 +656,37 @@ class Hephaistos:
 
 
 	@funcTracker
-	def tdcPeel(self):
+	def tdcPeel(self, external=None):
 		'''
 		Set up peeler, with catalogue, and run
+
+		external : str | Hephaistos object
+			Pass an external unit, as a path to be loaded or directly
+			The catalogue of this unit will be used for the purposes of peeling
 		'''
 
-		self.TDCCatConstructor.make_catalogue_for_peeler()
+		if not external:
+			self.TDCCatConstructor.make_catalogue_for_peeler()
 
-		# Useful to store here as I don't think tdc stores it persistently with the peeler
-		self.TDCCatalogue = self.TDCDataIO.load_catalogue()
+			# Useful to store here as I don't think tdc stores it persistently with the peeler
+			self.TDCCatalogue = self.TDCDataIO.load_catalogue()
+			self.TDC_clusters = self.TDCCatalogue['clusters']
+
+		else:
+			if isinstance(external, str):
+
+				print(f'loading unit from path: {external}\n')
+				external_unit = load(external)
+
+			elif external.__class__.__name__ == 'Hephaistos':
+				external_unit = external
+
+			self.TDCCatalogue = external_unit.TDCDataIO.load_catalogue()
+			self.TDC_clusters = self.TDCCatalogue['clusters']
+
+			self.TDC_external_catalogue = external_unit.Data_path	
+
+
 
 		self.TDCPeeler = Peeler(self.TDCDataIO)
 		self.TDCPeeler.change_params(catalogue=self.TDCCatalogue)
