@@ -61,8 +61,12 @@ def load(filename):
 	with open(filename, 'rb') as f:
 		loadedUnit = pickle.load(f)
 
+
+	print('\n*****\n')
 	for k,v in loadedUnit.TDCDataIO.info['HephTDCState'].items():
 		print(f'{k} ... {v}')
+
+	print('\n*****\n')
 
 	pprint(loadedUnit.TDCDataIO.info)
 
@@ -95,8 +99,7 @@ class Hephaistos:
 		]
 
 		conditional_methods = {
-			'readBasicSpkMat' : 'writeWaveClusMat',
-			'mkRawBin' : 'quickView',
+			'readBasicSpkMat' : ['writeWaveClusMat', 'quickView'],
 			'tdcCatPCAClust' : [
 				'tdcFindBetterBounds',
 				'tdcViewPCA',
@@ -380,7 +383,7 @@ class Hephaistos:
 				return b, a
 
 			b,a = butter_bandpass(low_cut, high_cut, sr, order)
-			
+
 			signal = sp_signal.filtfilt(
 				b, a,
 				self.Dat.__getattribute__(channel).GetTraceData()
@@ -726,6 +729,12 @@ class Hephaistos:
 			samples or less will be idenified as having collided
 
 			Relevant only if "identify_collisions" is True
+
+		drop_collisions : Boolean
+			If collisions identified, remove them from self.Spikes
+
+		drop_duplicate_spikes : Boolean
+			If two spikes are of the same cluster
 
 		filter_early_late : Boolean
 			(default True)
