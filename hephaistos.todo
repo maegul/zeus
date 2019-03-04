@@ -1,7 +1,7 @@
 
 TDS Integration:
   ✔ Check Prototype code @done (19-01-17 23:17)
-  ☐ Check reusable catalogue?
+  ✔ Check reusable catalogue? @done (19-02-27 16:46)
      Maybe not appropriate, perhaps best to try to achieve similar clusters across recordings
      TDC themselves do not advocate this, instead they recommend that one presume stability for only a short period of time.
   ✔ dataIO path integrity @done (19-01-23 20:35)
@@ -21,9 +21,9 @@ TDS Integration:
     ✔ collission filtering within clusters @done (19-01-27 15:23)
       relegate colliding spikes to where?
       Manipulate only inattribute?
-    ☐ review of ISI after collission filtering?
+    ✔ review of ISI after collission filtering? @done (19-02-27 16:46)
 
-  ☐ Saving 
+  ✔ Saving @done (19-02-27 16:46)
     ✔ cluster template waveform, @done (19-01-25 16:39)
     ✔ average waveform, @done (19-01-25 16:39)
     ✔ confInt for avg waveform @done (19-01-25 16:39)
@@ -31,10 +31,12 @@ TDS Integration:
 
  ✔ Test! @done (19-01-30 13:50)
 
-  ☐ Saving spikes for zeus!
-  ☐ Pickling each unit(?!?!)
+  ✔ Saving spikes for zeus! @done (19-02-27 16:46)
+  ✔ Pickling each unit(?!?!) @done (19-02-27 16:42)
     Perhaps not possible ... getting typeerrors (latest: _thread._local object cannot be pickled)
     attaching HDF5 and TDC could be a problem
+
+
 
   ☐ How deal with partial output data already existing?
 
@@ -42,6 +44,21 @@ TDS Integration:
   ☐ Merge Read functions so that single read function with options @low
 
   As paths are stored as relative paths (with original absolute in reserve):
+    ☐ Currently ... splitting themis and hephaistos data files not working due to relative files paths ... enable switch to absolute? @high
+      For reloading a Heph pkl file, the tdc is all reloaded.
+      The argument passed into tdcInit() is self.rawDataFilePath, which is derived from self._processing_data_path, which is relative.
+      So, to be able to load from elsewhere, that is, outside of the directory, there needs to be the ability to switch to absolute paths and to insert a new parent to the pre-existing relative paths.
+      (should be doable)
+      
+      More broadly, there is the question of whether this whole flexible directories thing is worth it in the end.  
+      maybe there are alternatives ...
+      ... loading only spike data (not the whole tdc thing)
+      ... saving spike data as a separate file
+      ... keeping all files in a flat directory
+
+
+
+
     ☐ add a check for whether in the right directory ?
       ☐ Perhaps with simple directory changing function?
     ☐ Add ability to switch to using absolute directories?
