@@ -117,7 +117,7 @@ class Athena:
 
 		# Or, concat with existing
 		else:
-			assert themis_obj.CELL_KEY not in self.CellData.index, (
+			assert themis_obj.CELL_KEY not in self.TunData.index, (
 				f'Themis with CELL_KEY {themis_obj.CELL_KEY} already in athena.CellData'
 				)
 
@@ -126,3 +126,5 @@ class Athena:
 		# join condition and cell data
 		# Relies on the cell key being the index for the join
 		self.Data = self.TunData.join(self.CellData)
+
+		self.save()
