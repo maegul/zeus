@@ -1077,3 +1077,49 @@ class chan:
 		pprint(self.params)
 
 
+
+# 
+# Utility functions
+# 
+
+def mkCorrelogram(spkTimesA, spkTimesB=None):
+
+	a = spkTimesA
+	b = spkTimesB if spkTimesB is not None else spkTimesA
+
+	xs, ys = np.meshgrid(a,b)
+
+	# subtract a times from b times to get how long after a spikes b spikes occur (7 - 3 = 4)
+	diffs = ys - xs
+
+	# Ie, this is an autocorrelation
+	if spkTimesB is None:
+		mask = np.ones_like(xs, dtype='bool' )
+		np.fill_diagonal(mask, False)
+
+		diffs = diffs[mask]
+
+	return diffs.flatten()
+
+
+def plotCorrelogram(unit, cells = [], histtype='stepfilled', width=15, bin_width=0.1, figsize=None):
+	
+	assert len(cells) <3, 'cannot yet do more than 2 cells for a grid plot'
+	
+	spikeTimes = [
+		unit.Spikes.query('cluster_label==@c').time.values
+		for c in cells
+	]
+	
+	diffs = mkCorrelogram(*spikeTimes)
+	# Work in milliseconds
+	diffs *= 1000
+
+	strt = width/2
+	end = width/2
+
+	bins = np.arange(-(strt+(bin_width/2)), end+bin_width+(bin_width/2), bin_width)
+	
+	if figsize is not None:
+		plt.figure(figsize=figsize)
+	plt.hist(diffs, bins=bins, histtype=histtype)
