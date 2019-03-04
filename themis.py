@@ -28,7 +28,9 @@ import pickle
 
 from . import hermes
 from . import hephaistos as heph
-from . import athena
+# from . import athena
+from .utils import funcTracker, getMethods
+
 
 
 def load_data(data_source, mode, cell_no=None):
@@ -392,9 +394,59 @@ def bootstrap(data, alpha=0.05, n_bootstrap = 2000, func=None, **func_args):
 ## Class Definitions
 
 class Themis:
+
+	def __repr__(self):
+
+		methods = getMethods(Themis, incl_hidden=True)
+
+		# List of methods to report, in order of preferred/necessary execution
+		method_report = [
+			'__init__',		
+			'_cell_ID',
+			'_sort',
+			'_conditions',
+			'_analyse'
+
+
+		]
+
+		conditional_methods = {
+			'__init__' : [
+				'_assign_projects',
+				'_stim_params',
+				'_stim_params_print'
+			],
+			'_cell_ID' : '_cell_id_print',
+			'_sort' : ['_marker_diag', '_plot_psth_flat'],
+			'_conditions' : '_plot_psth',
+			'_analyse' : '_plot_tuning'
+		}
+
+		rep = ''
+
+		for m in method_report:
+
+			if m in methods:
+
+				rep += '{0}\t{1}()\n'.format(
+					u"\u2705" if m in self._function_tracking else u"\u274c",
+					m
+					)
+
+			if m in conditional_methods:
+				condMethods = conditional_methods[m]
+				if isinstance(condMethods, list):
+					for cm in condMethods:
+						rep += '\t\t{0}()\n'.format(cm)
+				else:
+					rep += '\t\t{0}()\n'.format(condMethods)
+
+
+		return rep
+
 	
 	
-	
+	@funcTracker	
 	def __init__(self, data_path = None, output_path = '.', 
 		data_mode='matlab', cell=None):
 		
@@ -421,6 +473,10 @@ class Themis:
 			'matlab' or 'txt', to define what kind of data to load
 		
 		"""
+
+		# tracking function executions
+		# Useful for repr and user guidance
+		self._function_tracking = dict()
 
 		# Load files and assign to attributes
 		
@@ -570,7 +626,7 @@ class Themis:
 			)
 
 
-
+	@funcTracker
 	def _cell_ID(self, force = False, 
 		experiment = None, unit = None, cell = None, run = None):
 
@@ -672,7 +728,7 @@ class Themis:
 
 
 
-		
+	@funcTracker	
 	def _sort(self, use_codes = False, conditions = 9, trials = 10, stim_len = None,
 			  bin_width=0.02, auto_spont=False, sigma=3, alpha=0.05, 
 			  n_bootstrap=2000):
@@ -1031,7 +1087,7 @@ class Themis:
 		return output
 			
 			 
-
+	@funcTracker
 	def _conditions(self, beg=-90, intvl=20, con_type='ori', stim='bar', 
 					biphasic=True, unit='deg', con_list=[], temp_freq = 2):
 						
@@ -1269,7 +1325,7 @@ class Themis:
 
 
 
-
+	@funcTracker
 	def _analyse(self, source='sdf', alpha = 0.05, n_bootstrap = 2000, biphas_split_point = 0.5):
 		
 		
