@@ -957,8 +957,14 @@ class Hephaistos:
 
 		self.SavePath = file_name.absolute()
 
-		with open(file_name, 'wb') as f:
+		temp_path = self.SavePath.with_suffix(file_name.suffix + '.tmp')
+		
+
+		
+		with open(temp_path, 'wb') as f:
 			pickle.dump(self, f)
+
+		temp_path.rename(self.SavePath)
 
 		print(f'Saved pickle file to {str(file_name.parent)} as {str(file_name.name)}')
 
