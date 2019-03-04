@@ -715,8 +715,9 @@ class Hephaistos:
 
 	@funcTracker
 	def tdcExtractSpikes(self, merge_multi_unit = False, multi_unit_clusters = None,
-		multi_unut_annot = 'mu', identify_collisions = True, collision_threshold = 10,
-		filter_early_late = True):
+		multi_unut_annot = 'mu', identify_collisions = True, collision_threshold = 5,
+		filter_early_late = True, 
+		drop_duplicate_spikes=True, drop_collisions=True):
 		'''
 		save spike data to file and to object
 
@@ -790,6 +791,27 @@ class Hephaistos:
 
 				# Add collision column and insert diff mask
 				self.Spikes.loc[self.Spikes.cluster_label==cl, 'collision'] = diff_mask
+
+
+		# Drop spikes where they are the same cluster at exactly the same time
+		# Such duplications are likely the result of a cluster with variable amplitude
+		# Such clusters could be a problem, but are possible
+		if drop_duplicate_spikes:
+			# Looking for duplication on time index and cluster label
+			# Then, to allow duplication for multi unit, filtering out either multi unit cluster labels or the merged 111 label
+			duplicates_boolean = ( 
+				(self.Spikes.duplicated(subset=['index', 'cluster_label'])) 
+				& (~self.Spikes.cluster_label.isin( multi_unit_clusters + [111] ))
+				)
+
+			duplicate_idxs = duplicates_boolean[duplicates_boolean].index #odd syntax, but works cuz series is boolean
+			self.Spikes.drop(labels = duplicate_idxs, axis=0, inplace=True)
+
+		if drop_collisions:
+			assert identify_collisions, 'You need to identify collisions to drop them'
+
+			collision_idxs = self.Spikes.query('collision == True').index
+			self.Spikes.drop(labels = collision_idxs, axis=0, inplace=True)
 
 
 
