@@ -49,12 +49,23 @@ TDS Integration:
       The argument passed into tdcInit() is self.rawDataFilePath, which is derived from self._processing_data_path, which is relative.
       So, to be able to load from elsewhere, that is, outside of the directory, there needs to be the ability to switch to absolute paths and to insert a new parent to the pre-existing relative paths.
       (should be doable)
-      
+
       More broadly, there is the question of whether this whole flexible directories thing is worth it in the end.  
       maybe there are alternatives ...
       ... loading only spike data (not the whole tdc thing)
       ... saving spike data as a separate file
       ... keeping all files in a flat directory
+
+      ☐ Make TDC refresh optional in hephaistos.load()
+        ☐ take tdc refresh actions out of self.__setstate__() and put into separate function
+      ☐ Add to self._tdc_refresh() ability to manage finding needed path
+        ☐ check if relative path can be found in current path (if so, continue as normal)
+        ☐ if not, check that relative path can be found at .pkl path provided to hephaistos.load()
+          Use Pathlib.rglob
+          If found, change relevant path objects to newly discovered path relative to current path (using absolute paths attribute)
+            ☐ Probably should add a trigger to the self.save() function to confirm overriding these paths in the pkl
+            ☐ Will probably need to add self.rawDataPath to the list of paths converted to absolute paths
+              ☐ Add a backup of original relative paths and a function to reset??? @low
 
 
 

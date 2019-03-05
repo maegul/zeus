@@ -57,18 +57,21 @@ def doc_string_add(inserted_func):
 
 
 
-def load(filename):
+def load(filename, tdc_refresh = False):
 	with open(filename, 'rb') as f:
 		loadedUnit = pickle.load(f)
 
+	if tdc_refresh:
+		loadedUnit._tdc_refresh()
 
 	print('\n*****\n')
-	for k,v in loadedUnit.TDCDataIO.info['HephTDCState'].items():
-		print(f'{k} ... {v}')
+	# for k,v in loadedUnit.TDCDataIO.info['HephTDCState'].items():
+	# 	print(f'{k} ... {v}')
+	print(loadedUnit)
 
 	print('\n*****\n')
 
-	pprint(loadedUnit.TDCDataIO.info)
+	# pprint(loadedUnit.TDCDataIO.info)
 
 	return loadedUnit
 
@@ -1008,6 +1011,10 @@ class Hephaistos:
 		# Except for dataio, only if tdcInit has been run (maybe just run tdcInit, then make cat and peeler, as they rely only on dataio object)
 
 		self.__dict__.update(state)
+
+
+
+	def _tdc_refresh(self):
 
 		self.tdcInit()
 
