@@ -1,19 +1,19 @@
-import numpy as np
+# import numpy as np
 import pandas as pd
 
 # from circ_stat import circ_stat as cs
 
 import pickle
-import glob
-import copy
+# import glob
+# import copy
 
 import pathlib as pthl
 
 
-import collections
+# import collections
 
 from . import hermes
-from . import themis
+# from . import themis
 
 
 
@@ -128,3 +128,5 @@ class Athena:
 		self.Data = self.TunData.join(self.CellData)
 
 		self.save()
+		
+		themis_obj._save()
