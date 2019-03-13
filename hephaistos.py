@@ -560,8 +560,11 @@ class Hephaistos:
 		self.TDC_nLeft = n_left
 		self.TDC_nRight = n_right
 
+
 		self.TDCCatConstructor.extract_some_waveforms(n_left = n_left, n_right = n_right,
 			align_waveform=align_waveform)
+
+		self.TDCCatConstructor.extract_some_noise()
 
 		self.TDCCatConstructor.clean_waveforms(alien_value_threshold=alien_value_threshold)
 
@@ -683,7 +686,7 @@ class Hephaistos:
 			if isinstance(external, str):
 
 				print(f'loading unit from path: {external}\n')
-				external_unit = load(external)
+				external_unit = load(external, tdc_refresh=True)
 
 			elif external.__class__.__name__ == 'Hephaistos':
 				external_unit = external
@@ -956,6 +959,56 @@ class Hephaistos:
 		# make self.MultiUnitTemps, Avgs, STd etc
 		# temps will be each of the clusters that were merged
 		# avgs etc will the same ... single
+
+
+
+	def _dropSpikesGenMask(self, cell_base=None, cell_collide = None, threshold = None):
+		
+		
+		mask = (cell_collide > 0)
+		
+		for v in cell_base:
+		
+			newMask = (cell_collide > (v + threshold)) | ((v - threshold) > cell_collide )
+			mask = mask & newMask
+			
+			
+		return mask
+
+
+	def tdcDropSpikesCell2Cell(self, cell_base=None, cell_collide = None, threshold = 0.0001):
+		'''
+		Drops spikes from one cell that collide with spikes from another
+		Spikes are dropped from self.Spikes
+
+		Parameters
+		_____
+		cell_base : int or str
+			Cell label with which spikes may collide.  
+			Spikes from this cell are not dropped 
+
+		cell_collide : int or str
+			Cell label for the spikes that may collide with cell_base spikes and will be dropped.
+
+		threshold : float
+			Time window within which spikes will be considered to have collided.
+			Time window is made as (spike_time - threshold, spike_time + threshold)
+		'''
+		
+		cell0 = self.Spikes.query('cluster_label == @cell_base').time
+		cell0 = cell0.values
+		
+		cell1 = self.Spikes.query('cluster_label == @cell_collide').time
+		cell1_idx = cell1.index
+		cell1 = cell1.values
+		
+		mask = self._dropSpikesGenMask(cell_base=cell0, cell_collide=cell1, threshold=threshold)
+		
+		index_mask = cell1_idx[~mask]
+
+		self.Spikes.drop(labels = index_mask, axis=0, inplace=True)
+		
+
 
 	def save(self, file_name = None):
 		'''
