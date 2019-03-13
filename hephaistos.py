@@ -57,19 +57,20 @@ def doc_string_add(inserted_func):
 
 
 
-def load(filename, tdc_refresh = False):
+def load(filename, tdc_refresh = False, print_state = True):
 	with open(filename, 'rb') as f:
 		loadedUnit = pickle.load(f)
 
 	if tdc_refresh:
 		loadedUnit._tdc_refresh()
 
-	print('\n*****\n')
-	# for k,v in loadedUnit.TDCDataIO.info['HephTDCState'].items():
-	# 	print(f'{k} ... {v}')
-	print(loadedUnit)
+	if print_state:
+		print('\n*****\n')
+		# for k,v in loadedUnit.TDCDataIO.info['HephTDCState'].items():
+		# 	print(f'{k} ... {v}')
+		print(loadedUnit)
 
-	print('\n*****\n')
+		print('\n*****\n')
 
 	# pprint(loadedUnit.TDCDataIO.info)
 
