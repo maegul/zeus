@@ -1010,6 +1010,44 @@ class Hephaistos:
 		
 
 
+	def plotSpikeShape(self, use_template=False):
+			
+		spikeShapes = self.SpikeTemplates if use_template else self.SpikeAvgs
+		
+		for cell in self.SpikeAvgs.index:
+			
+			plt.plot(spikeShapes.loc[cell,:].values, label=f'Cell {cell}')
+			
+		plt.legend()
+
+
+	def plotSpikeAvgsTemps(self, n_cols = 2, figsize = (12,6)):
+		
+		spikeShapes = self.SpikeAvgs
+		spikeTemps = self.SpikeTemplates
+		
+		n_cells = self.SpikeAvgs.index.size
+		
+		n_rows = n_cells // n_cols + n_cells%n_cols
+		
+		plt.figure(figsize=figsize)
+		
+		for i, cell in enumerate(self.SpikeAvgs.index):
+			
+			plt.subplot(n_rows, n_cols, (i + 1))
+			
+			plt.plot(spikeShapes.loc[cell,:].values, label=f'Avg')
+			plt.plot(spikeTemps.loc[cell,:].values, label='template')
+			plt.title(f'Cell {cell}')
+			
+			if i == 0:
+				plt.legend()
+			
+			
+		plt.tight_layout()
+
+
+
 	def save(self, file_name = None):
 		'''
 		pickle the unit
@@ -1184,3 +1222,60 @@ def plotCorrelogram(unit, cells = [], histtype='stepfilled', width=15, bin_width
 	if figsize is not None:
 		plt.figure(figsize=figsize)
 	plt.hist(diffs, bins=bins, histtype=histtype)
+
+
+
+def plotCompareSpikesRuns(unit_a, unit_b, cells=[], run_labels=[], figsize=[12,6]):
+	
+	if isinstance(unit_a, str):
+		unit_a = load(unit_a, print_state=False)
+		
+	if isinstance(unit_b, str):
+		unit_b = load(unit_b, print_state=False)
+		
+	n_cells = len(cells)
+	
+	
+	
+	if len(run_labels) == 0:
+		run_labels = ['Run a', 'Run b']
+	
+	
+	plt.figure(figsize=figsize)
+	
+	for i,c in enumerate(cells):
+		
+		plt.subplot(n_cells, 3, (i*3+1))
+		
+		plt.plot(unit_a.SpikeTemplates.loc[c,:].values, label=run_labels[0], color='C0')
+		plt.plot(unit_b.SpikeTemplates.loc[c,:].values, label=run_labels[1], color='C2')
+		
+		plt.title(f'Cell {c} - Temp')
+		
+		plt.legend()
+		
+		
+		plt.subplot(n_cells, 3, (i*3+2))
+		
+		plt.plot(unit_a.SpikeAvgs.loc[c,:].values, label=run_labels[0], color='C1')
+		plt.plot(unit_b.SpikeAvgs.loc[c,:].values, label=run_labels[1], color='C3')
+		plt.title('Avg')
+		
+		plt.legend()
+		
+		
+		plt.subplot(n_cells, 3, (i*3+3))
+
+		plt.plot( unit_b.SpikeTemplates.loc[c,:].values - unit_a.SpikeTemplates.loc[c,:].values, 
+				 label=f'Templ', color='C2')
+		
+		plt.plot( unit_b.SpikeAvgs.loc[c,:].values - unit_a.SpikeAvgs.loc[c,:].values, 
+				 label=f'Avg', color='C3')
+		
+		plt.axhline(y=0, linestyle=':', color='0.65')
+		
+		plt.title(f'Difference ({run_labels[1]} - {run_labels[0]})')
+		plt.legend()
+		
+	plt.tight_layout()
+	
