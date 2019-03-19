@@ -546,13 +546,19 @@ class Hephaistos:
 
 	@funcTracker
 	def tdcSetUpCatalogue(self, n_left=-30, n_right=30, align_waveform=True, 
-		alien_value_threshold = 100):
+		alien_value_threshold = 100, catalogue_mode='rand'):
 		'''
 		Setup the catalogue and run both PCA and clustering
 
 		n_left and n_right expressed in milliseconds, converted to samples in code
 
 		alien_value_threshold is expressed MAD (I think)
+
+
+		catalogue_mode : str
+			mode for extract_some_waveforms
+			'rand' - random
+			'all' - all peaks
 		'''
 
 		assert n_left < 0 and n_right > 0, 'n_left must be negative, n_right positive'
@@ -562,7 +568,8 @@ class Hephaistos:
 
 
 		self.TDCCatConstructor.extract_some_waveforms(n_left = n_left, n_right = n_right,
-			align_waveform=align_waveform)
+			align_waveform=align_waveform,
+			mode = catalogue_mode)
 
 		self.TDCCatConstructor.extract_some_noise()
 
