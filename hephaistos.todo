@@ -1,4 +1,8 @@
 
+Spike management:
+  ☐ separate spike extraction and spike avg shape 
+    This is so that averages can be update to take account of dropped spikes
+
 TDS Integration:
   ✔ Check Prototype code @done (19-01-17 23:17)
   ✔ Check reusable catalogue? @done (19-02-27 16:46)
@@ -42,6 +46,7 @@ TDS Integration:
 
 
   ☐ Merge Read functions so that single read function with options @low
+
 
   As paths are stored as relative paths (with original absolute in reserve):
     ☐ Currently ... splitting themis and hephaistos data files not working due to relative files paths ... enable switch to absolute? @high

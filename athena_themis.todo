@@ -1,4 +1,12 @@
 
+ ☐ Subtraction of spontaneous activity @high
+     1 second before markers should be safely blank!
+
+ ☐ Clean way of extracting only one side of biphasic responses @high
+
+
+
+
  ☐ Functions for checking data and output paths, and, changing them (for file mobility)
  ☐ Functions for 
    ✔ updating, @done (19-02-05 01:41)
