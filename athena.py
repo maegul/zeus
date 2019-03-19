@@ -121,7 +121,8 @@ class Athena:
 				f'Themis with CELL_KEY {themis_obj.CELL_KEY} already in athena.CellData'
 				)
 
-			self.TunData = pd.concat([self.TunData, themis_obj.cond_tuning_pd])
+			self.TunData = pd.concat([self.TunData, themis_obj.cond_tuning_pd],
+				sort = True)
 
 		# join condition and cell data
 		# Relies on the cell key being the index for the join
@@ -130,3 +131,12 @@ class Athena:
 		self.save()
 		
 		themis_obj._save()
+
+
+
+	def replaceThemis(self, themis_obj):
+
+		self.TunData.drop(labels = themis_obj.CELL_KEY, inplace = True)
+		self.CellData.drop(labels = themis_obj.CELL_KEY, inplace = True)
+
+		self.addThemis(themis_obj)
