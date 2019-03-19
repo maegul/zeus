@@ -1331,7 +1331,8 @@ class Themis:
 
 
 	@funcTracker
-	def _analyse(self, source='sdf', alpha = 0.05, n_bootstrap = 2000, biphas_split_point = 0.5):
+	def _analyse(self, source='sdf', alpha = 0.05, n_bootstrap = 2000, 
+		biphas_split_point = 0.5, biphase_select_resp = None):
 		
 		
 		# Need to add capacity to handle two things:
@@ -1378,6 +1379,12 @@ class Themis:
 		biphas_split_point : float
 			If biphasic, what point to split the PSTH.
 			0.5 -> half, 0.25 -> at quarter point, etc.
+
+		biphase_select_resp : int
+			If stimuli is biphasic, but desire only one set of responses
+			Biphase ids start are 1 and 2 (for first and second response)
+			Provide integer for which response is to be recorded, exclusively,
+			in cond_tuning and cond_tuning_pd
 
 			
 		
@@ -1596,6 +1603,25 @@ class Themis:
 		if self.parameters['condition_type'] == 'orientation':
 			self.cond_tuning = self.cond_tuning[:,self.cond_tuning[0].argsort()]
 			self.cond_tuning_pd.sort_values(self.cond_tuning_pd.columns[0], inplace=True)
+
+
+		# 
+		# cond_tuning cleaning up
+		# 
+
+		if biphase_select_resp is not None:
+			assert isinstance(biphase_select_resp, int) and biphase_select_resp in [1,2], \
+			f'biphase_select_resp ({biphase_select_resp}) must be an integer of 1 or 2'
+
+			assert self.parameters['biphasic'], 'Stimulus not analysed as biphasic'
+
+			# cond tuning array
+			cond_tuning_biphase_mask = self.cond_tuning[4,:] == biphase_select_resp
+			self.cond_tuning = self.cond_tuning[:, cond_tuning_biphase_mask]
+
+			# cond tuning pandas dataframe
+			self.cond_tuning_pd = self.cond_tuning_pd.query('biphas_id == @biphase_select_resp')
+
 
 
 		assert hasattr(self, 'CELL_ID'), 'Make Cell ID first'
