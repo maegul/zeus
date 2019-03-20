@@ -737,7 +737,7 @@ class Themis:
 	def _sort(self, use_codes = False, conditions = 9, trials = 10, stim_len = None,
 			  bin_width=0.02, sigma=3, alpha=0.05, 
 			  n_bootstrap=2000,
-			  auto_spont=False, spont_method=None, peri_marker_window=-1):
+			  auto_spont=False, spont_method=None, peri_marker_window=-1, spont_use=None):
 		
 		"""Sorts spikes into conditions and trials on the basis of the markers
 		loaded by `zeus.__init__` and the expected amount of conditions and
@@ -796,6 +796,12 @@ class Themis:
 			"peri_marker" - define a time window around each marker, the firing rate
 			in which being the spontaneous activity.  The window is defined by
 			peri_marker_window.  The rate is assigned to attribute self.spont_rate
+
+		spont_use : str
+			Method for using the spontaneous rate
+
+			None - don't use, but can be graphed optionally in PSTHs
+			"subtract" - subtract spont rate from self.conditions_hist_mean
 		
 		Returns
 		_______
@@ -894,7 +900,7 @@ class Themis:
 
 		assert spont_method in ['peri_marker'], \
 		f'spont_method ({spont_method}) not valid option.'	
-		
+
 		self.parameters['spont_method'] = spont_method
 		
 #==============================================================================
@@ -996,15 +1002,15 @@ class Themis:
 				
 			# PSTH for each trial added for the condition    
 			self.conditions_trials_hist[ic] = trials_hist
-			
-		# Average and Standard Error, for each bin, calculated across the trials (second axis)    
-		self.conditions_hist_mean = np.mean(self.conditions_trials_hist, axis=1)
-		self.conditions_hist_stderr = stats.sem(self.conditions_trials_hist, axis= 1, ddof=0)
 
+	#==============================================================================
+	# Spontaneous function
+	#==============================================================================
 
-#==============================================================================
-# Create more robust spontaneous function
-#==============================================================================
+		# 
+		# Calculating Spontaneous Rate
+		# 
+
 		# Calculate spontaneous rate from unstimulated portion of the record
 		if auto_spont:
 			index = self.spikes < self.markers[0]
@@ -1034,6 +1040,34 @@ class Themis:
 			n_spikes = len(self.spont_spikes)
 			spont_time_length = self.markers.size * abs(peri_marker_window)
 			self.spont_rate = n_spikes / (spont_time_length)
+
+
+		# 
+		# Calculating mean rates
+		# Dealing with Spontaneous Rate 
+		# 
+
+		if spont_use == 'subtract':
+
+			# Convert spont rate to bin counts, as all bin counts are raw spike counts
+			# All of which are converted to Hertz only when tuning data is taken out
+
+			bin_spont_rate = self.spont_rate * self.parameters['bin_width']
+
+			self.pre_spont_conditions_trials_hist = self.conditions_trials_hist.copy()
+
+			self.conditions_trials_hist -= bin_spont_rate
+			self.conditions_trials_hist[self.conditions_trials_hist < 0] = 0
+
+			# Pre spontaneous mean rates
+			self.pre_spont_conditions_hist_mean = np.mean(self.pre_spont_conditions_trials_hist, axis=1)
+			self.pre_spont_conditions_hist_stderr = stats.sem(self.pre_spont_conditions_trials_hist, axis= 1, ddof=0)
+
+
+			
+		# Average and Standard Error, for each bin, calculated across the trials (second axis)    
+		self.conditions_hist_mean = np.mean(self.conditions_trials_hist, axis=1)
+		self.conditions_hist_stderr = stats.sem(self.conditions_trials_hist, axis= 1, ddof=0)
 
 
 
