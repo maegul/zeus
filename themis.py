@@ -736,6 +736,7 @@ class Themis:
 	@funcTracker	
 	def _sort(self, use_codes = False, conditions = 9, trials = 10, stim_len = None,
 			  bin_width=0.02, sigma=3, alpha=0.05, 
+			  omit_trials = None, omit_conds = None,
 			  n_bootstrap=2000,
 			  auto_spont=False, spont_method=None, peri_marker_window=-1, spont_use=None):
 		
@@ -889,19 +890,6 @@ class Themis:
 			conds = np.arange(1, conditions+1)
 
 
-		self.parameters['conditions'] = conditions
-		self.parameters['trials'] = trials
-
-		self.parameters['sdf_alpha'] = alpha
-		self.parameters['sdf_number_bootstrap'] = n_bootstrap     
-		self.parameters['sdf_sigma'] = sigma       
-
-		self.parameters['bin_width'] = bin_width
-
-		assert spont_method in [None, 'peri_marker'], \
-		f'spont_method ({spont_method}) not valid option.'	
-
-		self.parameters['spont_method'] = spont_method
 		
 #==============================================================================
 # Post-marker buffer & Spontaneous calculation needed.
@@ -919,6 +907,43 @@ class Themis:
 				f'Number of markers ("{self.markers.size}") != number of marker codes ("{self.marker_codes.size}") '	
 				)
 		
+		if omit_trials is not None:
+			assert hasattr(omit_trials, '__iter__') or isinstance(omit_trials, (int,float) ), 'Omit_trials not iterable or number'
+
+			if isinstance(omit_trials, (int,float)):
+				omit_trials = [omit_trials]
+
+			n_conds = conditions
+
+			mask = np.ones_like(self.markers, dtype='bool')
+
+			for ot in omit_trials:
+
+				mask[(ot)*n_conds : (ot+1)*n_conds] = False
+				
+			self.markers = self.markers[mask]
+			if use_codes:
+				self.marker_codes = self.marker_codes[mask]
+
+			trials -= len(omit_trials)
+
+			self.parameters['omit_trials'] = omit_trials
+
+		# Adding to parameters dictionary
+
+		self.parameters['conditions'] = conditions
+		self.parameters['trials'] = trials
+
+		self.parameters['sdf_alpha'] = alpha
+		self.parameters['sdf_number_bootstrap'] = n_bootstrap     
+		self.parameters['sdf_sigma'] = sigma       
+
+		self.parameters['bin_width'] = bin_width
+
+		assert spont_method in [None, 'peri_marker'], \
+		f'spont_method ({spont_method}) not valid option.'	
+
+		self.parameters['spont_method'] = spont_method
 		
 		# determine stimulus length
 		if stim_len:
