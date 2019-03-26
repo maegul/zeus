@@ -14,7 +14,7 @@ import numpy.fft as fft
 
 
 
-# import matplotlib as mpl
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 # from matplotlib.ticker import MultipleLocator
 plt.style.use('ggplot')
@@ -898,7 +898,7 @@ class Themis:
 
 		self.parameters['bin_width'] = bin_width
 
-		assert spont_method in ['peri_marker'], \
+		assert spont_method in [None, 'peri_marker'], \
 		f'spont_method ({spont_method}) not valid option.'	
 
 		self.parameters['spont_method'] = spont_method
@@ -1410,7 +1410,7 @@ class Themis:
 
 	@funcTracker
 	def _analyse(self, source='sdf', alpha = 0.05, n_bootstrap = 2000, 
-		biphas_split_point = 0.5, biphase_select_resp = None):
+		biphase_split_point = 0.5, biphase_select_resp = None):
 		
 		
 		# Need to add capacity to handle two things:
@@ -1454,7 +1454,7 @@ class Themis:
 			For bootstrap confidence intervals generated for the fourier analysis.
 			Defines how many trials are re-sampled.
 
-		biphas_split_point : float
+		biphase_split_point : float
 			If biphasic, what point to split the PSTH.
 			0.5 -> half, 0.25 -> at quarter point, etc.
 
@@ -1485,6 +1485,9 @@ class Themis:
 		
 		"""
 		## Add parameters to parameters dictionary
+
+		self.parameters['biphase_split_point'] = biphase_split_point
+		self.parameters['biphase_select_resp'] = biphase_select_resp
 		
 		# Organising source selection - raw and mov_avg not develoepd fully yet.
 		sources = {'sdf': (self.spike_dens_func, self.CI_pos, self.CI_neg), 
@@ -1512,7 +1515,7 @@ class Themis:
 			if self.parameters['biphasic']:
 				
 				# Take max response for each half of each PSTH, including Conf Intvls
-				half = int(self.bins.size * biphas_split_point)
+				half = int(self.bins.size * biphase_split_point)
 
 				max_val_arg = (resp[:, :half].argmax(axis=1),
 							   resp[:, half:].argmax(axis=1)+half)
@@ -1980,6 +1983,28 @@ class Themis:
 	
 		  # bug with this and teh macosx backend      
 #        plt.tight_layout()
+
+		if ('biphase_select_resp' in self.parameters) and (self.parameters['biphase_select_resp'] is not None):
+
+			for pl in fig.axes:
+				split_point = int(self.bins.size * self.parameters['biphase_split_point'])
+				split_time_point = self.bins[split_point]
+				# bin_shift = (0.015 * self.bins.size)*self.parameters['bin_width']
+
+				pl.axvline(x=split_time_point, color="#c13a00", linestyle='--', linewidth=2, alpha=0.7)
+
+				if self.parameters['biphase_select_resp'] == 1:
+					# pl.axvline(x=split_time_point-(bin_shift), color="#c13a00", linestyle='-', linewidth=0.5, alpha=0.9)
+					circ = mpl.patches.Circle((0.05, 0.95), radius=0.03, transform=pl.transAxes, 
+						edgecolor='None', facecolor='#c13a00' )
+					pl.add_patch(circ)
+
+				if self.parameters['biphase_select_resp'] == 2:
+					# pl.axvline(x=split_time_point+(bin_shift), color="#c13a00", linestyle='-', linewidth=0.5, alpha=0.9)
+					circ = mpl.patches.Circle((0.95, 0.95), radius=0.03, transform=pl.transAxes, 
+						edgecolor='None', facecolor='#c13a00' )
+					pl.add_patch(circ)
+
 		plt.subplots_adjust(hspace=0.45)
 
 	def _plot_psth_flat(self, sigma=5, figsize = (15, 8)):
