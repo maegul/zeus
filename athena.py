@@ -36,6 +36,24 @@ def load(file_path):
 
 class Athena:
 
+	def __repr__(self):
+
+		summary = self.CellData.loc[:,['experiment', 'unit', 'cell', 'run']].groupby(by=['experiment', 'unit', 'cell']).count()
+
+		# Number of unique indices from the multiindex of the grouping (experiment, unit, cell) ... ie, how many unique cells
+		n_cells = summary.size
+
+		n_animals = self.CellData.experiment.unique().size
+
+		rep = f''
+
+		rep += f"{self.PROJ_ID['name']}:\t{self.PROJ_ID['description']}\n"
+		rep += f"{n_animals} Animals   |   {n_cells} Cells\n"
+		rep += f"{summary}"
+
+		return rep
+
+
 	def __init__(self, name = None, description = None, path = '.'):
 
 		'''
