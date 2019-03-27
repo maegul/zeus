@@ -17,7 +17,6 @@ import numpy.fft as fft
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 # from matplotlib.ticker import MultipleLocator
-plt.style.use('ggplot')
 
 import pandas as pd
 
@@ -32,6 +31,7 @@ from . import hephaistos as heph
 from .utils import funcTracker, getMethods
 
 
+plt.style.use('ggplot')
 
 def load_data(data_source, mode, cell_no=None):
 	'''
@@ -907,6 +907,7 @@ class Themis:
 				f'Number of markers ("{self.markers.size}") != number of marker codes ("{self.marker_codes.size}") '	
 				)
 		
+
 		if omit_trials is not None:
 			assert hasattr(omit_trials, '__iter__') or isinstance(omit_trials, (int,float) ), 'Omit_trials not iterable or number'
 
@@ -921,13 +922,20 @@ class Themis:
 
 				mask[(ot)*n_conds : (ot+1)*n_conds] = False
 				
+			self._pre_omit_markers = self.markers.copy()
 			self.markers = self.markers[mask]
+
 			if use_codes:
+				self._pre_omit_marker_codes = self.marker_codes.copy()
 				self.marker_codes = self.marker_codes[mask]
 
 			trials -= len(omit_trials)
 
 			self.parameters['omit_trials'] = omit_trials
+
+
+		if (omit_trials is None) and ('omit_trials' in self.parameters):
+			print(f"Trials have previously been omitted ({self.parameters['omit_trials']}), restore?")
 
 		# Adding to parameters dictionary
 
@@ -1125,6 +1133,18 @@ class Themis:
 													 kernel, axis=1)
 			
 			
+	def _restore_omit_trials(self):
+
+		self.markers = self._pre_omit_markers.copy()
+		self.marker_codes = self._pre_omit_marker_codes.copy()
+
+		del self._pre_omit_markers
+		del self._pre_omit_marker_codes
+
+		del self.parameters['omit_trials']
+
+
+
 	def _marker_diag(self, auto_replace = False):
 		"""Attempts to pinpoint where markers have been lost or missed in the marker stream.
 		
@@ -2273,6 +2293,76 @@ class Themis:
 			
 			
 
+
+	def _plot_trial_psth_chron_order(self, plot_trials=[0,1,2], plot_conds='all', 
+		n_cols = 3, figsize = (15,15)):
+
+		'''
+		Plots PSTHs for individual trials
+
+		IF conditions are NOT RANDOMISED, then they will be in chronological order.
+
+		For randomised conditions, I need to change the code to follow the marker_codes
+		'''
+
+
+		if plot_conds == 'all':
+
+			n_conds = self.conditions_trials_hist.shape[0]
+			plot_conds = range(n_conds)
+
+		if plot_trials == 'all':
+
+			n_trials = self.conditions_trials_hist.shape[1]
+			plot_trials = range(n_trials)
+
+
+		assert hasattr(plot_trials, '__iter__'), 'plot_trials must be an iterable'
+		assert hasattr(plot_conds, '__iter__'), 'plot_conds must be an iterable'
+
+		max_val = self.conditions_trials_hist.max()
+
+		plt.figure(figsize=figsize)
+
+
+		marker_record = {c:0 for c in plot_conds}
+
+		for m in self.marker_codes:
+
+			if m not in plot_conds:
+				continue
+			if marker_record[m] not in plot_trials:
+				marker_record[m] += 1
+				continue
+
+			c = m
+			t = marker_record[m]
+
+			plt.subplot( int(np.ceil((len(plot_trials)*len(plot_conds))/n_cols) ), n_cols, (plot_trials.index(t)*len(plot_conds) + c + 1))
+			
+			plt.plot(self.conditions_trials_hist[c, t, :])
+			plt.title(f'cond: {c}, trial {t}')
+						
+			plt.ylim(0, max_val)
+
+			
+			marker_record[m] += 1
+
+		plt.tight_layout()
+
+
+		# for t in plot_trials:
+		# 	for c in plot_conds:
+				
+		# 		plt.subplot( int(np.ceil((len(plot_trials)*len(plot_conds))/n_cols) ), n_cols, (t*len(plot_conds) + c + 1))
+				
+		# 		plt.plot(self.conditions_trials_hist[c, t, :])
+		# 		plt.title(f'cond: {c}, trial {t}')
+							
+		# 		plt.ylim(0, max_val)
+
+			
+		# plt.tight_layout()
 			
 
 				
