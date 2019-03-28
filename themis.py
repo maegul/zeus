@@ -640,8 +640,8 @@ class Themis:
 			experiment = experiment, unit=unit, cell=cell, run = run
 			)
 
-		self.CELL_KEY = f'{experiment}u{unit}c{cell}r{run}'
-
+		# self.CELL_KEY = f'{experiment}u{unit}c{cell}r{run}'
+		self.CELL_KEY = hermes.mk_cell_key(experiment=experiment, unit=unit, cell=cell, run=run)
 
 		if hasattr(self, 'PROJ_ID'):
 			with open(self.ATHENA_PATH, 'rb') as f:

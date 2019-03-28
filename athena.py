@@ -1,9 +1,10 @@
-# import numpy as np
+import numpy as np
 import pandas as pd
 
 # from circ_stat import circ_stat as cs
 
 import pickle
+import inspect
 # import glob
 # import copy
 
@@ -72,12 +73,24 @@ class Athena:
 		}
 
 
-	def save(self):
+	def save(self, file_name = None):
 
-		file_name = self.path / ('Athena_' + self.PROJ_ID['name'] + '_' + self.PROJ_ID['ID'] + '.pkl')
+		if file_name is None:
 
-		self.SavePath = file_name
-		self._absolute_paths['SavePath'] = file_name.absolute()
+			if not hasattr(self, 'SavePath'):
+				file_name = self.path / ('Athena_' + self.PROJ_ID['name'] + '_' + self.PROJ_ID['ID'] + '.pkl')
+
+				self.SavePath = file_name
+				self._absolute_paths['SavePath'] = file_name.absolute()
+
+			else:
+				file_name = self.SavePath
+
+		else:
+			file_name = pthl.Path(file_name)
+			self.SavePath = file_name
+			self._absolute_paths['SavePath'] = file_name.absolute()
+
 
 		# Atomic saving (helpful?)
 		temp_path = file_name.with_suffix(file_name.suffix + '.tmp')
@@ -158,3 +171,22 @@ class Athena:
 		self.CellData.drop(labels = themis_obj.CELL_KEY, inplace = True)
 
 		self.addThemis(themis_obj)
+
+
+
+	def getUniqueKeys(self, filtered_data, return_multi_index=False):
+
+		idx = filtered_data.groupby(by=['experiment', 'unit', 'cell', 'run']).count().index
+
+		keys = [
+			hermes.mk_cell_key_from_iterable(i)
+			for i in idx
+		]
+
+		if not return_multi_index:
+			return keys
+		elif return_multi_index:
+			return keys, idx
+
+		else:
+			return keys
