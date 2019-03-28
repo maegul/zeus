@@ -14,6 +14,7 @@ import pathlib as pthl
 # import collections
 
 from . import hermes
+from . import curveFuncs
 # from . import themis
 
 
@@ -190,3 +191,110 @@ class Athena:
 
 		else:
 			return keys
+
+	# def addCurveFunc(self, name, curveFunc, overwrite=False):
+
+	# 	'''
+	# 	Curve is expected to be used for curve fitting (with scipy.optimize)
+	# 	As such, it is presumed to take only positional arguments
+	# 	And, it is expected that the first positional argument is 'x'
+
+
+	# 	'''
+
+	# 	if not hasattr(self, 'CurveFuncs' ):
+	# 		self.CurveFuncs = dict()
+
+	# 	assert isinstance(name, str), 'name must be a string'
+	# 	assert callable(curveFunc), 'curveFunc must be a callable/function'
+
+	# 	assert (name not in self.CurveFuncs) and (not overwrite), f'Name ({name}) already in use, overwrite? '
+
+
+	# 	self.CurveFuncs[name] = curveFunc
+
+
+
+
+	# def getCurveDoc(self, name):
+
+	# 	assert hasattr(self, 'CurveFuncs'), 'CurveFuncs not initialised yet, use self.addCurveFunc'
+
+	# 	print(self.CurveFuncs[name].__doc__)
+
+
+	# def getCurveCode(self, name, return_string=False):
+
+	# 	assert hasattr(self, 'CurveFuncs'), 'CurveFuncs not initialised yet, use self.addCurveFunc'
+
+	# 	source = inspect.getsource(self.CurveFuncs[name])
+	# 	if not return_string:
+	# 		print( source  )
+	# 		return
+
+	# 	elif return_string:
+	# 		return source 
+
+
+	def addCurveFit(self, cell_data_key, name, popt_args, RSq_val, overwrite=False):
+
+		if not hasattr(self, 'CurveFits'):
+			self.CurveFits = dict()
+
+		if cell_data_key in self.CurveFits:	
+			assert name not in self.CurveFits[cell_data_key], f'function name ({name}) already in fits for {cell_data_key}'
+
+		if cell_data_key not in self.CurveFits:
+			self.CurveFits[cell_data_key] = dict()
+
+		if name not in self.CurveFits[cell_data_key]:
+			self.CurveFits[cell_data_key][name] = dict()
+
+		func_args = inspect.getfullargspec(curveFuncs.__dict__[name])[0] # only need positional args
+		func_args.remove('x') # don't need the x input arg (should come from tuning conditions)
+
+		self.CurveFits[cell_data_key][name]['popt'] = dict(zip(func_args, popt_args))
+
+		self.CurveFits[cell_data_key][name]['RSq'] = RSq_val
+
+
+
+def genRSq(xdata, ydata, curveFunc, opt_curveFuncArgs):
+
+	'''
+	
+	Parameters
+	_____
+
+	curveFunc_name : str
+		Reference to the dictionary key for a function stored in self.CurveFuncs
+
+	opt_curveFuncArgs : dict, list
+		Dict or list of optimised args to be passed to the function found at curveFunc_name
+	'''
+
+	if isinstance(opt_curveFuncArgs, dict):
+		curve = curveFunc(xdata, **opt_curveFuncArgs)
+	elif isinstance(opt_curveFuncArgs, list) or hasattr(opt_curveFuncArgs, '__iter__'):
+		curve = curveFunc(xdata, *opt_curveFuncArgs)
+	
+	res = ydata - curve
+	
+	ss_res = np.sum(res**2)
+	
+	ss_tot = np.sum(
+		(ydata - np.mean(ydata))**2
+	)
+	
+	return 1-(ss_res/ss_tot)
+
+
+# def getCureveList(self, docs=True):
+
+
+# 	for c,f in self.CurveFuncs.items():
+# 		print(f'{c}{inspect.signature(f).__str__()}')
+# 		print(f.__doc__)
+
+
+
