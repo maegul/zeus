@@ -533,6 +533,9 @@ class Hephaistos:
 
 		self.TDCCatConstructor.run_signalprocessor(duration=catalogue_duration)
 
+		# for quick reference to measure of noise
+		self.TDC_signals_mads, self.TDC_signals_medians = self.TDCCatConstructor.signals_mads, self.TDCCatConstructor.signals_medians
+
 		# Custom state recording
 		self.TDCDataIO.info['HephTDCState'].update(
 				dict(PreProcess = True)
@@ -673,7 +676,7 @@ class Hephaistos:
 
 
 	@funcTracker
-	def tdcPeel(self, external=None):
+	def tdcPeel(self, external=None, insert_actual_MAD_values = True):
 		'''
 		Set up peeler, with catalogue, and run
 
@@ -703,7 +706,12 @@ class Hephaistos:
 
 			self.TDC_external_catalogue = external_unit.Data_path	
 
+			# Insert noise measures of actual data into imported/external template
+			if insert_actual_MAD_values:
+				assert hasattr(self, 'TDC_signals_mads') and hasattr(self, 'TDC_signals_medians'), 'Need to have run self.tdcPreProcess to get estimate of noise and MADS'
 
+				self.TDCCatalogue['signals_mads'] = self.TDC_signals_mads
+				self.TDCCatalogue['signals_medians'] = self.TDC_signals_medians
 
 		self.TDCPeeler = Peeler(self.TDCDataIO)
 		self.TDCPeeler.change_params(catalogue=self.TDCCatalogue)
