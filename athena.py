@@ -192,6 +192,28 @@ class Athena:
 		else:
 			return keys
 
+
+
+
+	def getData(self, exp=None, u=None, c=None, r=None, key = None):
+		
+				
+		if key is None:
+
+			exp = str(exp)
+			u = str(u)
+			c = str(c)
+			r = str(r)
+
+			data = self.Data.query('(experiment == @exp) & (unit == @u) & (cell == @c) & (run == @r)')
+			
+		elif isinstance(key, str):	
+			data = self.Data.loc[key]
+		
+		data = data.loc[:,['condition', 'max_resp']].values.T
+
+		return data
+
 	# def addCurveFunc(self, name, curveFunc, overwrite=False):
 
 	# 	'''
