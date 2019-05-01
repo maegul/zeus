@@ -2338,7 +2338,11 @@ class Themis:
 			c = m
 			t = marker_record[m]
 
-			plt.subplot( int(np.ceil((len(plot_trials)*len(plot_conds))/n_cols) ), n_cols, (plot_trials.index(t)*len(plot_conds) + c + 1))
+			plt.subplot( 
+				int( np.ceil((len(plot_trials)*len(plot_conds))/n_cols) ), 
+				n_cols, 
+				(plot_trials.index(t) * len(plot_conds) + plot_conds.index(c) + 1)
+				)
 			
 			plt.plot(self.conditions_trials_hist[c, t, :])
 			plt.title(f'cond: {c}, trial {t}')
