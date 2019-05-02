@@ -96,17 +96,32 @@ def mk_cell_ID(experiment = None, unit = None, cell = None, run = None):
 	return cell_id
 
 
-def mk_cell_key(experiment = None, unit = None, cell = None, run = None):
+def mk_cell_key(experiment = None, unit = None, cell = None, run = None,
+				pureCellKey = False
+	):
 
-	return f'{experiment}u{unit}c{cell}r{run}'
+	assert type(pureCellKey) == bool, 'pureCellKey must be boolean'
+
+	if not pureCellKey:
+		key = f'{experiment}u{unit}c{cell}r{run}'
+
+	elif pureCellKey:
+		key = f'{experiment}u{unit}c{cell}'
+
+	return key
 
 
-def mk_cell_key_from_iterable(iterable):
+def mk_cell_key_from_iterable(iterable, pureCellKey = False):
 	'''
 	Presumes iterable contains strings in order of exp, unit, cell, run
 	'''
 
-	return f'{iterable[0]}u{iterable[1]}c{iterable[2]}r{iterable[3]}'
+	if not pureCellKey:
+		key = f'{iterable[0]}u{iterable[1]}c{iterable[2]}r{iterable[3]}'
+	if pureCellKey:
+		key = f'{iterable[0]}u{iterable[1]}c{iterable[2]}'
+		
+	return key
 
 
 def mk_stim_params(**kwargs):
