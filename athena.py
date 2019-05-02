@@ -121,7 +121,7 @@ class Athena:
 		hasStimParams = hasattr(themis_obj, 'STIM_PARAMS')
 
 		assert hasCellID and hasStimParams, (
-			f'Themis object does not have required data sets.\n'  
+			f'Themis object does not have required data sets.\n'
 			f'Cell ID: {hasCellID};  Stim Params: {hasStimParams}'
 			)
 
