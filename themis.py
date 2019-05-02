@@ -640,8 +640,6 @@ class Themis:
 			experiment = experiment, unit=unit, cell=cell, run = run
 			)
 
-		# self.CELL_KEY = f'{experiment}u{unit}c{cell}r{run}'
-		self.CELL_KEY = hermes.mk_cell_key(experiment=experiment, unit=unit, cell=cell, run=run)
 
 		if hasattr(self, 'PROJ_ID'):
 			with open(self.ATHENA_PATH, 'rb') as f:
@@ -671,6 +669,12 @@ class Themis:
 		self.CELL_ID = hermes.mk_cell_ID(
 			experiment = experiment, unit=unit, cell=cell, run = run
 			)
+
+		self.CELL_KEY = hermes.mk_cell_key(**self.CELL_ID,
+											pureCellKey=True
+			)
+		
+		self.RUN_KEY = hermes.mk_cell_key(**self.CELL_ID)
 
 
 
@@ -1752,8 +1756,9 @@ class Themis:
 
 		assert hasattr(self, 'CELL_ID'), 'Make Cell ID first'
 
-		self.cond_tuning_pd.insert(0, 'key', self.CELL_KEY)
-		self.cond_tuning_pd.set_index('key', inplace=True)
+		self.cond_tuning_pd.insert(0, 'run_key', self.RUN_KEY)
+		self.cond_tuning_pd.insert(0, 'cell_key', self.CELL_KEY)
+		self.cond_tuning_pd.set_index(['cell_key', 'run_key'], inplace=True)
 
 		self.cond_tuning_pd.insert(0, 'cond_type', self.parameters['condition_type'])
 		self.cond_tuning_pd.insert(1, 'cond_unit', self.parameters['condition_unit'])
