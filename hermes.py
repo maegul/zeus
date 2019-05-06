@@ -120,7 +120,7 @@ def mk_cell_key_from_iterable(iterable, pureCellKey = False):
 		key = f'{iterable[0]}u{iterable[1]}c{iterable[2]}r{iterable[3]}'
 	if pureCellKey:
 		key = f'{iterable[0]}u{iterable[1]}c{iterable[2]}'
-		
+
 	return key
 
 
@@ -153,12 +153,15 @@ def mk_stim_params(**kwargs):
 
 
 # Init dataset - make a dataframe from a single entry
-def initDataSet(key, cell_data, stim_data):
+def initDataSet(cell_key, run_key, cell_data, stim_data):
 
-	cell_data.update(stim_data)
+	cell_data = cell_data.copy()
+	cell_data.update(stim_data.copy())
 
-	dataSet = pd.DataFrame(data=cell_data, index = [key])
-	dataSet.index.name = 'key'
+	midx = pd.MultiIndex.from_product([[cell_key],[run_key]],
+		names = ['cell_key', 'run_key']
+		)
+	dataSet = pd.DataFrame(data=cell_data, index=midx)
 
 	return dataSet
 
@@ -182,7 +185,7 @@ def separateDataKeys(dataSet):
 
 
 
-def appendDataSet(key, cell_data, stim_data, dataSet, force=False):
+def appendDataSet(cell_key, run_key, cell_data, stim_data, dataSet, force=False):
 
 
 	# Separate Cell data from rest for dataset
@@ -204,10 +207,11 @@ def appendDataSet(key, cell_data, stim_data, dataSet, force=False):
 	cell_data = cell_data.copy()
 	cell_data.update(stim_data.copy())
 
-	cell_data = pd.Series(data = cell_data, name = key)
+	midx = pd.MultiIndex.from_product([[cell_key],[run_key]])
+	cell_data = pd.DataFrame(data=cell_data, index=midx)
 
 	# Relying on integrity check to prevent data being added twice
-	dataSet = dataSet.append(cell_data, verify_integrity=True)
+	dataSet = dataSet.append(cell_data, sort=False, verify_integrity=True)
 
 	
 	return dataSet	

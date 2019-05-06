@@ -106,6 +106,8 @@ class Athena:
 
 	def addThemis(self, themis_obj, check_redundancy=False):
 
+		# Testing themis_obj is appropriate
+
 		if isinstance(themis_obj, str):
 
 			# Not sure how to use or store the path
@@ -125,23 +127,34 @@ class Athena:
 			f'Cell ID: {hasCellID};  Stim Params: {hasStimParams}'
 			)
 
+		###
+		# Cell Data init or append
+		###
+
 		# Init cell dataset as it does not exist yet
 		if not hasattr(self, 'CellData'):
 			self.CellData = hermes.initDataSet(
-				themis_obj.CELL_KEY, themis_obj.CELL_ID, themis_obj.STIM_PARAMS
+				themis_obj.CELL_KEY, themis_obj.RUN_KEY,
+				themis_obj.CELL_ID, themis_obj.STIM_PARAMS
 				)
 
 		# Appened cell dataset
 		else:
-			assert themis_obj.CELL_KEY not in self.CellData.index, (
-				f'Themis with CELL_KEY {themis_obj.CELL_KEY} already in athena.CellData'
+			assert themis_obj.RUN_KEY not in self.CellData.index[1], (
+				f'Themis with RUN_KEY {themis_obj.RUN_KEY} already in athena.CellData'
 				)
 			
 			self.CellData = hermes.appendDataSet(
-				themis_obj.CELL_KEY,
+				themis_obj.CELL_KEY, themis_obj.RUN_KEY,
 				themis_obj.CELL_ID, themis_obj.STIM_PARAMS, self.CellData,
 				# hermes.appendDataSet has checking built in, if force is False
 				force = (not check_redundancy)) 
+
+			self.CellData.sort_index()
+
+		###
+		# Tuning Data init or append
+		###
 
 		# Take tuning data - init main Dataset
 		if not hasattr(self, 'TunData'):
@@ -149,8 +162,8 @@ class Athena:
 
 		# Or, concat with existing
 		else:
-			assert themis_obj.CELL_KEY not in self.TunData.index, (
-				f'Themis with CELL_KEY {themis_obj.CELL_KEY} already in athena.CellData'
+			assert themis_obj.RUN_KEY not in self.TunData.index[1], (
+				f'Themis with RUN_KEY {themis_obj.RUN_KEY} already in athena.CellData'
 				)
 
 			self.TunData = pd.concat([self.TunData, themis_obj.cond_tuning_pd],
@@ -168,8 +181,9 @@ class Athena:
 
 	def replaceThemis(self, themis_obj):
 
-		self.TunData.drop(labels = themis_obj.CELL_KEY, inplace = True)
-		self.CellData.drop(labels = themis_obj.CELL_KEY, inplace = True)
+		# level 1 for run_key in the multi index
+		self.TunData.drop(labels = themis_obj.RUN_KEY, level=1, inplace = True)
+		self.CellData.drop(labels = themis_obj.RUN_KEY, level=1, inplace = True)
 
 		self.addThemis(themis_obj)
 
@@ -195,7 +209,20 @@ class Athena:
 
 
 
-	def getData(self, exp=None, u=None, c=None, r=None, key = None):
+	def getData(self, exp=None, u=None, c=None, r=None, key = None,
+		columns = ['condition', 'max_resp']
+		):
+		'''
+		For given cell metadata or key return the full data 
+		(including cell,stim and tuning)
+
+		Key must be run specific, ie, RUN_KEY
+
+		Returns
+		----
+		Slice of self.Data as an array, 
+		specific to cell metadata/key, and columns argument.
+		'''
 		
 				
 		if key is None:
@@ -208,9 +235,10 @@ class Athena:
 			data = self.Data.query('(experiment == @exp) & (unit == @u) & (cell == @c) & (run == @r)')
 			
 		elif isinstance(key, str):	
-			data = self.Data.loc[key]
+			data = self.Data.loc[(slice(None), key),:]
+
 		
-		data = data.loc[:,['condition', 'max_resp']].values.T
+		data = data.loc[:,columns].values.T
 
 		return data
 
