@@ -135,7 +135,8 @@ class Athena:
 		if not hasattr(self, 'CellData'):
 			self.CellData = hermes.initDataSet(
 				themis_obj.CELL_KEY, themis_obj.RUN_KEY,
-				themis_obj.CELL_ID, themis_obj.STIM_PARAMS
+				themis_obj.CELL_ID, themis_obj.STIM_PARAMS,
+				themis_obj.parameters['condition_type']
 				)
 
 		# Appened cell dataset
@@ -146,7 +147,9 @@ class Athena:
 			
 			self.CellData = hermes.appendDataSet(
 				themis_obj.CELL_KEY, themis_obj.RUN_KEY,
-				themis_obj.CELL_ID, themis_obj.STIM_PARAMS, self.CellData,
+				themis_obj.CELL_ID, themis_obj.STIM_PARAMS, 
+				themis_obj.parameters['condition_type'],
+				self.CellData,
 				# hermes.appendDataSet has checking built in, if force is False
 				force = (not check_redundancy)) 
 
@@ -170,24 +173,16 @@ class Athena:
 				sort = True)
 
 
-		# Insert cond_type into CellData
+		# ensuring cond_type is first column
+		cd_cols = self.CellData.columns.tolist()
+		if cd_cols[0] != 'cond_type':
+			cd_cols.insert(0, cd_cols.pop( cd_cols.index('cond_type')))
+			self.CellData = self.CellData.reindex(cd_cols)
 
 		# join condition and cell data
 		# Relies on the cell key being the index for the join
 		self.Data = self.TunData.join(self.CellData)
 
-		# index.duplicated returns boolean Series for rows that are duplicates (apart from first)
-		# not duplicated is true for first instances of cell+run keys
-		# joining to ensure index keys are matched
-		self.CellData = self.CellData.join(
-			self.TunData.cond_type[~self.TunData.index.duplicated()]
-			)
-
-		# ensuring cond_type is first column
-		cd_cols = self.CellData.columns.tolist()
-		cd_cols.insert(0, cd_cols.pop( cd_cols.index('cond_type')))
-
-		self.CellData = self.CellData.reindex(cd_cols)
 
 		self.save()
 		

@@ -153,10 +153,11 @@ def mk_stim_params(**kwargs):
 
 
 # Init dataset - make a dataframe from a single entry
-def initDataSet(cell_key, run_key, cell_data, stim_data):
+def initDataSet(cell_key, run_key, cell_data, stim_data, cond_type):
 
 	cell_data = cell_data.copy()
 	cell_data.update(stim_data.copy())
+	cell_data.update({'cond_type': cond_type})
 
 	midx = pd.MultiIndex.from_product([[cell_key],[run_key]],
 		names = ['cell_key', 'run_key']
@@ -185,7 +186,8 @@ def separateDataKeys(dataSet):
 
 
 
-def appendDataSet(cell_key, run_key, cell_data, stim_data, dataSet, force=False):
+def appendDataSet(cell_key, run_key, cell_data, stim_data, cond_type, dataSet, 
+	force=False):
 
 
 	# Separate Cell data from rest for dataset
@@ -206,6 +208,7 @@ def appendDataSet(cell_key, run_key, cell_data, stim_data, dataSet, force=False)
 	# Prevent mutation of themis attributes!
 	cell_data = cell_data.copy()
 	cell_data.update(stim_data.copy())
+	cell_data.update({'cond_type':cond_type})
 
 	midx = pd.MultiIndex.from_product([[cell_key],[run_key]])
 	cell_data = pd.DataFrame(data=cell_data, index=midx)
