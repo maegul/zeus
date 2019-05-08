@@ -1736,7 +1736,7 @@ class Themis:
 
 
 		# 
-		# cond_tuning cleaning up
+		# cond_tuning cleaning up and inserting important meta data / columns
 		# 
 
 		if biphase_select_resp is not None:
@@ -1755,6 +1755,7 @@ class Themis:
 
 
 		assert hasattr(self, 'CELL_ID'), 'Make Cell ID first'
+
 
 		self.cond_tuning_pd.insert(0, 'run_key', self.RUN_KEY)
 		self.cond_tuning_pd.insert(0, 'cell_key', self.CELL_KEY)
