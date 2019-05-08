@@ -153,7 +153,7 @@ class Athena:
 				# hermes.appendDataSet has checking built in, if force is False
 				force = (not check_redundancy)) 
 
-			self.CellData.sort_index()
+		self.CellData.sort_index(inplace=True)
 
 		###
 		# Tuning Data init or append
@@ -172,6 +172,8 @@ class Athena:
 			self.TunData = pd.concat([self.TunData, themis_obj.cond_tuning_pd],
 				sort = True)
 
+		self.TunData.sort_index(inplace=True)
+
 
 		# ensuring cond_type is first column
 		cd_cols = self.CellData.columns.tolist()
@@ -181,7 +183,11 @@ class Athena:
 
 		# join condition and cell data
 		# Relies on the cell key being the index for the join
-		self.Data = self.TunData.join(self.CellData)
+		# Avoid overlapping columns by joining only those columns that are not present
+		# in CellData
+
+		cols_to_use = self.TunData.columns.difference(self.CellData.columns)
+		self.Data = self.CellData.join(self.TunData[cols_to_use])
 
 
 		self.save()
