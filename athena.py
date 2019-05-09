@@ -205,6 +205,51 @@ class Athena:
 		self.addThemis(themis_obj)
 
 
+	def addAnalysisData(self, analData, key=None):
+
+		'''
+		Parameters
+		----
+		key : str
+			Default: None
+			If None, analData presumed to be dict with first level keys
+			providing run_keys.
+			If key provided, analData is presumed to be a single row of analysis
+			data, in a dictionary.	
+		'''
+
+		if not hasattr(self, 'AnalysisData'):
+			self.AnalysisData = hermes.initAnalysisData(analData, key)
+
+		else:
+			self.AnalysisData = hermes.appendAnalysisData(analData, key, self.AnalysisData)
+
+		self.AnalysisData.sort_index()
+
+
+	def replaceAnalysisData(self, analData, key=None):
+
+		if key is not None:
+			assert key in self.AnalysisData.index, \
+				f'key {key} not in AnalysisData, cannot be replaced'
+			self.AnalysisData.drop(index=key, inplace=True)
+			self.AnalysisData = self.addAnalysisData(analData, key, self.AnalysisData)
+
+		elif key is None:
+			assert isinstance(analData, dict), \
+				'analData must be a dictionary if no key is provided'
+
+			keys = analData.keys()
+
+			for k in keys:
+				assert k in self.AnalysisData.index, \
+					f'run_key {k} not in index'
+
+			self.AnalysisData.drop(index=keys, inplace=True)
+			self.AnalysisData = self.addAnalysisData(analData, key, self.AnalysisData)
+
+
+
 
 	def getUniqueKeys(self, filtered_data, return_multi_index=False):
 
@@ -349,6 +394,54 @@ class Athena:
 		self.CurveFitsSugg[cell_data_key][name]['RSq'] = RSq_val
 
 
+	def getCurve(self, key):
+		curve_func_name = sorted(self.CurveFits[key].items(), key = lambda cv: cv[1]['RSq'])[-1][0]
+		curve_func = getattr(curveFuncs, curve_func_name)
+		
+		return curve_func_name, curve_func
+
+
+
+	def getCurveData(self, key, n_interp=None):
+		'''
+		Parameters
+		----
+		key : str
+			Run Key for pulling data out for the specified run	
+
+		n_interp : int
+			Default: None
+			If not None, determines number of data points to use in an interpolation
+			of the conditions data (from min to max)
+		
+		'''
+
+
+		curve_func_name, curve_func = self.getCurve(key)
+		
+		func_args = inspect.getfullargspec(curve_func)[0]
+		func_args_param = self.CurveFits[key][curve_func_name]['popt']
+
+		p0 = [
+			func_args_param[arg]
+			for arg in func_args[1:]
+		]    
+		
+		data = self.getData(key = key)
+
+		if n_interp is None:
+			cond_data = data[0]
+		else:
+			assert isinstance(n_interp, int), 'n_interp must be an integer'
+			cond_data = np.linspace(data[0].min(), data[0].max(), n_interp)
+
+		y_curve = curve_func(cond_data, *p0)
+		
+		return np.vstack((
+			cond_data, y_curve
+		))
+
+
 
 def genRSq(xdata, ydata, curveFunc=None, opt_curveFuncArgs=None, curve_vals = None):
 
@@ -387,6 +480,8 @@ def genRSq(xdata, ydata, curveFunc=None, opt_curveFuncArgs=None, curve_vals = No
 	)
 	
 	return 1-(ss_res/ss_tot)
+
+
 
 
 # def getCureveList(self, docs=True):

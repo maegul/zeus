@@ -220,6 +220,34 @@ def appendDataSet(cell_key, run_key, cell_data, stim_data, cond_type, dataSet,
 	return dataSet	
 
 
+def initAnalysisData(analData, key):
+
+	# IE, run_keys are keys of the dictionary
+	if key is None:
+		analDataDF = pd.DataFrame.from_dict(analData, orient='index')
+
+	if isinstance(key, str):
+		analDataDF = pd.DataFrame(data=analData, index=[key])
+
+	return analDataDF
+
+
+
+def appendAnalysisData(analData, key, dataset):
+
+	if key is None:
+		analData = pd.DataFrame.from_dict(analData, orient='index')
+
+	if isinstance(key, str):
+		analData = pd.DataFrame(data=analData, index=[key])
+
+
+	dataset = dataset.append(analData, sort=False, verify_integrity=True)
+
+	return dataset
+
+
+
 
 # Check entries for cell id
 def checkCellData(cell_data, cellDataSet, splitDataSet = False):
