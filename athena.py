@@ -225,6 +225,7 @@ class Athena:
 			self.AnalysisData = hermes.appendAnalysisData(analData, key, self.AnalysisData)
 
 		self.AnalysisData.sort_index()
+		self.save()
 
 
 	def replaceAnalysisData(self, analData, key=None):
