@@ -210,6 +210,11 @@ class Athena:
 		'''
 		Parameters
 		----
+		analData : dict
+			Dictionary with results of analysis as items
+			Either for a single run, or for multiple runs in a nested dict,
+			see docs for key parameter
+			
 		key : str
 			Default: None
 			If None, analData presumed to be dict with first level keys
@@ -224,6 +229,7 @@ class Athena:
 		else:
 			self.AnalysisData = hermes.appendAnalysisData(analData, key, self.AnalysisData)
 
+		self.AnalysisData.index.name = 'run_key'
 		self.AnalysisData.sort_index()
 		self.save()
 
