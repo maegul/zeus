@@ -683,6 +683,16 @@ class Hephaistos:
 		external : str | Hephaistos object
 			Pass an external unit, as a path to be loaded or directly
 			The catalogue of this unit will be used for the purposes of peeling
+
+		insert_actual_MAD_values : boolean
+			Requires self.tdcPreProcess() to have been run (to estimate noise)
+			Use noise estimages (medians and MAD values) of the CURRENT data in 
+			the catalogue of the external data.
+			This should adjust for any changes in amplitude that have occurred
+			over time.
+			The values are dynamically inserted into the self.TDCCatalogue 
+			object, which is derived from the external unit.
+
 		'''
 
 		if not external:
