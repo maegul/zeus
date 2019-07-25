@@ -25,7 +25,8 @@ def quickThemis(data_path = None, cell_no = None, project = None):
 
 	cell = themis.Themis(data_path = data_path, cell = cell_no)
 
-	cell._assign_project(project)
+	if project is not None:
+		cell._assign_project(project)
 
 	return cell
 

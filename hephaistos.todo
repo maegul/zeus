@@ -95,6 +95,9 @@ TDS Integration:
 
 QuickView:
   ✔ Time on the x axis, at least for the downsampled view? @done (19-01-09 14:14)
+  ☐ BUG - when signal is small, highlighted region (LinearRegionItem) is too big @critical
+      * The logic with viewlimit and limt is a little convoluted and should be cleaned up
+      * Main issue is to instantiate a highlight region that is only a certain number of samples or a certain percentage of the signal
   ☐ Add lines or something for the markers
   ☐ Buffering with HDF5 native slicing
     Perhaps not necessary, as any given channel is not that much memory (~50MB?)

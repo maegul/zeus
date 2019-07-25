@@ -1373,19 +1373,19 @@ class Themis:
 
 				# self.conditions has been defined as an np.ndarray
 				self.conditions2 = self.conditions 
-# 
-#                 # Generate list of strings or labels
-#                 for c in range(n_con):
-#                     label = '%s / %s %s' %(self.conditions[c], self.conditions2[c],
-#                                            self.parameters['condition_unit'])
-#                     self.cond_label.append(label)
-# 
-#             else:
-#                 for c in range(n_con):
-#                     
-#                     label = '%s %s' %(self.conditions[c],
-#                                       self.parameters['condition_unit'])
-#                     self.cond_label.append(label)
+
+			#     # Generate list of strings or labels
+			#     for c in range(n_con):
+			#         label = '%s / %s %s' %(self.conditions[c], self.conditions2[c],
+			#                                self.parameters['condition_unit'])
+			#         self.cond_label.append(label)
+
+			# else:
+			#     for c in range(n_con):
+					
+			#         label = '%s %s' %(self.conditions[c],
+			#                           self.parameters['condition_unit'])
+			#         self.cond_label.append(label)
 
 				
 		
@@ -1469,6 +1469,7 @@ class Themis:
 					label = '%s %s' %(self.conditions[c],
 									  self.parameters['condition_unit'])
 					self.cond_label.append(label)
+
 
 
 
