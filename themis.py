@@ -1240,11 +1240,16 @@ class Themis:
 			
 		con_type : string
 			Condition type.  Stimulus parameter varying in experiment.  
-			Predefined defaults are - `orientation` - `spat_freq` - `temporal freq` - `chromatic`.  
+			Predefined defaults are - 
+			`orientation` - `spat_freq` - `temporal freq` - `chromatic` - 
+			`dl_bar`.  
 			Default is `orientation`.
 			If a predifined type is not provided, it is presumed to describe a
 			linear range of conditions according to `beg` and `intvl`.
-			
+			If `dl_bar`, use con_list to provide the contrasts, if applicable,
+			in the order of presentation.  As the order is presumed to be 
+			dark-light, you can use this to reverse the order.	
+
 		stim : string
 			Stimulus type.  
 			Select either - `bar` - `grating`.
@@ -1280,7 +1285,7 @@ class Themis:
 		"""
 		
 		
-		con_types = ['ori', 'spat_freq', 'temporal_freq', 'chromatic']
+		con_types = ['ori', 'spat_freq', 'temporal_freq', 'chromatic', 'dl_bar']
 		stims = ['bar', 'grating']
 		
 		
@@ -1427,7 +1432,19 @@ class Themis:
 				label = '%s %s' %(self.conditions[c], self.parameters['condition_unit'])
 				self.cond_label.append(label)
 
-					
+		# IF condition type is dl_bar					
+		elif con_type.lower() == con_types[4]:
+
+			self.conditions = [0, 1]
+			self.cond_label = ['dark','light']
+
+			if len(con_list) > 0:
+				self.conditions = np.array(con_list).astype('float')
+
+				if con_list[0] > con_list[1]:
+					self.cond_label = self.cond_label[::-1]
+
+
 		# if condition type is not predefined in this method, presume linear range           
 		elif not con_type.lower() in con_types:
 			
@@ -2234,8 +2251,59 @@ class Themis:
 		# Plot others, including grating fourier harmonics
 		# ==============================================================================
 
+		# IF condition is "dl_bar"
 
+		# Quite different from others ... two conditions
+		# Purpose of this plot is show the segregation of the dark and light responses
+		elif self.parameters['condition_type'] == 'dl_bar':
+
+			fig = plt.figure(figsize = figsize)
+			ax = fig.add_subplot(111)
+
+			# Sorting out order of light and dark
+			polarity_idx = [0,1]
+			if self.cond_label[0]>self.cond_label[1]:
+				polarity_idx = polarity_idx[::-1]
+
+			dark = self.conditions_hist_mean[0,:]
+			light = self.conditions_hist_mean[1,:]
+
+			dl_diff = np.abs(light-dark) / 2
+			sl_sum = (dark+light)/2
+
+			bins = self.bins[:-1]
+			mid_bins = self.bins[:-1] + (self.bin_width / 2)
+
+			ax.fill_between(bins, dark, color='darkblue', alpha=0.4, 
+							step='post', label='dark')
+			# ax.plot(light, 'orangered', label='light')
+			ax.fill_between(bins, light, color='orangeRed', alpha=0.4, 
+							step='post', label='light')
+
+			max_resp = ax.get_ylim()[1]
+
+			ax.plot(mid_bins, -dl_diff, color='k', label='diff/2')
+			ax.plot(mid_bins, -sl_sum, color='red', label='sum/2')
+
+			ax.legend()
+
+			# The diff and sum plots are not negative, just upside down for visual purposes
+
+			ax.set_ylim((-max_resp, max_resp))
+			y_ticks = ax.get_yticks()
+
+			if frequency == True:
+				y_ticks = np.round(
+					y_ticks * (1/self.bin_width),
+					decimals = 1
+					)
+
+			y_ticks[y_ticks < 0] *= -1
+			y_labels = y_ticks.astype('float')
+
+			ax.set_yticklabels(y_labels)
 				
+
 		else:
 
 			fig = plt.figure(figsize=figsize)
