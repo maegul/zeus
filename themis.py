@@ -1971,22 +1971,23 @@ class Themis:
 						else:
 							ax.set_ylabel('Average count')
 				
-#                plotform(ax)
+               # plotform(ax)
 
 
 
 		elif plot_type.lower() == plot_types[1]:
 			
+			pos_stderr = self.conditions_hist_mean + 2*self.conditions_hist_stderr
+			neg_stderr = self.conditions_hist_mean - 2*self.conditions_hist_stderr
+
+			y_max = pos_stderr.max() * 1.14
+
 			for c in range(n_con):
 				
-				pos_stderr = self.conditions_hist_mean + 2*self.conditions_hist_stderr
-				neg_stderr = self.conditions_hist_mean - 2*self.conditions_hist_stderr
-	
 				ax = fig.add_subplot(rows, cols, c+1)
 				
-				ax.set_ylim(0, pos_stderr.max() * 1.14)       
-				ax.set_xlim(0, self.bins[-1])            
-				
+				ax.set_ylim(bottom=0, top=y_max) 
+				ax.set_xlim(left=0, right=self.bins[-1])
 				
 				ax.plot(self.bins[:-1] + 0.5*bin_width, self.conditions_hist_mean[c],
 						color='0.28', linewidth=1)
@@ -1999,7 +2000,6 @@ class Themis:
 				ax.set_title(self.cond_label[c])
 				
 	
-	
 				if smooth:
 					spd = mkSmooth()
 					ax.plot(self.bins[:-1] + 0.5*bin_width, spd[c], 
@@ -2008,12 +2008,6 @@ class Themis:
 	
 	
 					
-				# convert ylabl to frequency units
-						
-				if frequency:
-					freq_label = np.round(ax.get_yticks() * (1 / bin_width), 
-										  decimals=1)
-					ax.set_yticklabels( freq_label)
 				
 					# ylabel for all left most subplots
 				for sub_plt in np.arange(1, rows*cols, cols):
@@ -2023,8 +2017,14 @@ class Themis:
 						else:
 							ax.set_ylabel('Average count')
 				
+						
+				# convert ylabl to frequency units
+				if frequency:
+					freq_label = np.round(ax.get_yticks() * (1 / bin_width), 
+											  decimals=1)
+					ax.set_yticklabels( freq_label)
 
-#                plotform(ax)
+               # plotform(ax)
 				
 				
 				
@@ -2063,7 +2063,7 @@ class Themis:
 							ax.set_ylabel('Average count')
 	
 		  # bug with this and teh macosx backend      
-#        plt.tight_layout()
+       # plt.tight_layout()
 
 		if ('biphase_select_resp' in self.parameters) and (self.parameters['biphase_select_resp'] is not None):
 
@@ -2086,7 +2086,10 @@ class Themis:
 						edgecolor='None', facecolor='#c13a00' )
 					pl.add_patch(circ)
 
-		plt.subplots_adjust(hspace=0.45)
+		# Can cause problems with fonts and axis tick labels
+		
+		# plt.subplots_adjust(hspace=0.45)
+		# plt.tight_layout(pad=1.1)
 
 	def _plot_psth_flat(self, sigma=5, figsize = (15, 8)):
 		""" Do all conditions side by side with a small filter
