@@ -1435,7 +1435,7 @@ class Themis:
 		# IF condition type is dl_bar					
 		elif con_type.lower() == con_types[4]:
 
-			self.conditions = [0, 1]
+			self.conditions = np.array([0, 1])
 			self.cond_label = ['dark','light']
 
 			if len(con_list) > 0:
@@ -1443,6 +1443,18 @@ class Themis:
 
 				if con_list[0] > con_list[1]:
 					self.cond_label = self.cond_label[::-1]
+
+			if biphasic:
+
+				self.conditions2 = self.conditions
+
+				self.cond_label.extend(
+					[
+						cl + ' second'
+						for cl in self.cond_label
+					]	
+					)
+
 
 
 		# if condition type is not predefined in this method, presume linear range           
@@ -2115,7 +2127,7 @@ class Themis:
 			
 	
 	def _plot_tuning(self, plot_type = 'linear', frequency=True, modulation='both',
-					 xaxis_scale = 'linear', xaxis_base = '2',
+					 xaxis_scale = 'linear', xaxis_base = '2', use_sdf = False,
 					 figsize = (10, 6)):
 		
 		"""
@@ -2126,6 +2138,11 @@ class Themis:
 		modulation : string
 			For grating stimuli, which modulation to plot.
 			Either 'F1', 'F0' or 'both'.  Default is 'both'.
+
+		use_sdf : boolean
+			If PSTH data is to be ploted, this switch determines
+			whether raw histogram data or SDF (density function)
+			is to be used
 			
 		
 		"""
@@ -2266,30 +2283,44 @@ class Themis:
 			if self.cond_label[0]>self.cond_label[1]:
 				polarity_idx = polarity_idx[::-1]
 
-			dark = self.conditions_hist_mean[0,:]
-			light = self.conditions_hist_mean[1,:]
-
-			dl_diff = np.abs(light-dark) / 2
-			sl_sum = (dark+light)/2
-
 			bins = self.bins[:-1]
 			mid_bins = self.bins[:-1] + (self.bin_width / 2)
 
-			ax.fill_between(bins, dark, color='darkblue', alpha=0.4, 
-							step='post', label='dark')
-			# ax.plot(light, 'orangered', label='light')
-			ax.fill_between(bins, light, color='orangeRed', alpha=0.4, 
-							step='post', label='light')
+			if use_sdf == True:
+				dark = self.spike_dens_func[0,:]
+				light = self.spike_dens_func[1,:]
+
+				ax.fill_between(mid_bins, dark, color='darkblue', alpha=0.4, 
+								step=None, label='dark')
+				# ax.plot(light, 'orangered', label='light')
+				ax.fill_between(mid_bins, light, color='orangeRed', alpha=0.4, 
+								step=None, label='light')
+
+			else:
+				dark = self.conditions_hist_mean[0,:]
+				light = self.conditions_hist_mean[1,:]
+
+				ax.fill_between(bins, dark, color='darkblue', alpha=0.4, 
+								step='post', label='dark')
+				# ax.plot(light, 'orangered', label='light')
+				ax.fill_between(bins, light, color='orangeRed', alpha=0.4, 
+								step='post', label='light')
+
+
+			# IMPORTANT ... must be changed by same factor
+			# As, seg index calculation made below presumes so
+			dl_diff = np.abs(light-dark) / 2
+			dl_sum = (dark+light)/2
 
 			max_resp = ax.get_ylim()[1]
 
 			ax.plot(mid_bins, -dl_diff, color='k', label='diff/2')
-			ax.plot(mid_bins, -sl_sum, color='red', label='sum/2')
+			ax.plot(mid_bins, -dl_sum, color='red', label='sum/2')
 
 			ax.legend()
 
 			# The diff and sum plots are not negative, just upside down for visual purposes
-
+			# make labels reflect this by making the values positive
 			ax.set_ylim((-max_resp, max_resp))
 			y_ticks = ax.get_yticks()
 
@@ -2303,7 +2334,20 @@ class Themis:
 			y_labels = y_ticks.astype('float')
 
 			ax.set_yticklabels(y_labels)
-				
+
+			if self.parameters['biphasic'] is True:
+				half_mark = int(self.bins.size * self.parameters['biphase_split_point'])
+				seg_index = []
+
+				seg_index.append(round(dl_diff[:half_mark].sum() / dl_sum[:half_mark].sum(), 3))
+				seg_index.append(round(dl_diff[half_mark:].sum() / dl_sum[half_mark:].sum(), 3))
+
+				ax.axvline(self.bins[half_mark], color = '0.4', linestyle='--')
+
+			else:	
+				seg_index = round(dl_diff.sum() / dl_sum.sum(), 3)
+
+			ax.set_title(f'Seg Index: {seg_index}')				
 
 		else:
 
