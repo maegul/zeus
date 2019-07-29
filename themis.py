@@ -1832,6 +1832,8 @@ class Themis:
 		
 		directory = self.Output_path
 
+		# replace with 
+		# file_name = hermes.mk_themis_file_name(themis_obj = self)
 		file_name = f'Themis_{self.CELL_ID["experiment"]}_u{self.CELL_ID["unit"]}_c{self.CELL_ID["cell"]}_r{self.CELL_ID["run"]}.pkl'
 
 		save_path = directory / file_name
@@ -2087,7 +2089,7 @@ class Themis:
 					pl.add_patch(circ)
 
 		# Can cause problems with fonts and axis tick labels
-		
+
 		# plt.subplots_adjust(hspace=0.45)
 		# plt.tight_layout(pad=1.1)
 
@@ -2346,6 +2348,25 @@ class Themis:
 				seg_index.append(round(dl_diff[half_mark:].sum() / dl_sum[half_mark:].sum(), 3))
 
 				ax.axvline(self.bins[half_mark], color = '0.4', linestyle='--')
+
+				if ('biphase_select_resp' in self.parameters) and (self.parameters['biphase_select_resp'] is not None):
+
+
+					if self.parameters['biphase_select_resp'] == 1:
+						# pl.axvline(x=split_time_point-(bin_shift), color="#c13a00", linestyle='-', linewidth=0.5, alpha=0.9)
+						circ = mpl.patches.Circle((0.05, 0.95), radius=0.03, transform=ax.transAxes, 
+							edgecolor='None', facecolor='#c13a00' )
+						ax.add_patch(circ)
+
+					if self.parameters['biphase_select_resp'] == 2:
+						# pl.axvline(x=split_time_point+(bin_shift), color="#c13a00", linestyle='-', linewidth=0.5, alpha=0.9)
+						circ = mpl.patches.Circle((0.95, 0.95), radius=0.03, transform=ax.transAxes, 
+							edgecolor='None', facecolor='#c13a00' )
+						ax.add_patch(circ)
+
+
+
+
 
 			else:	
 				seg_index = round(dl_diff.sum() / dl_sum.sum(), 3)
