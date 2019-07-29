@@ -55,6 +55,30 @@ def mk_project_ID(name = None, description = None):
 	return proj_id
 
 
+def mk_themis_file_name(themis_obj = None, 
+	experiment = None, unit = None, cell = None, run = None):
+
+	if themis_obj is not None:
+
+		assert hasattr(themis_obj, 'CELL_ID'), 'Themis object must have an instantiated CELL ID'
+
+		file_name = f'Themis_{themis_obj.CELL_ID["experiment"]}_' +\
+					f'u{themis_obj.CELL_ID["unit"]}_' +\
+					f'c{themis_obj.CELL_ID["cell"]}_' +\
+					f'r{themis_obj.CELL_ID["run"]}.pkl'
+
+	else:
+		assert None not in (experiment, unit, cell, run), 'Must pass experiment ... run variables if themis_obj is None'
+
+		file_name = f'Themis_{experiment}_' +\
+					f'u{unit}_' +\
+					f'c{cell}_' +\
+					f'r{run}.pkl'
+
+
+	return file_name	
+
+
 def show_info(d, spec_keys=None):
 	'''
 	spec_keys : list

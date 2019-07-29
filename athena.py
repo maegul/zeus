@@ -276,6 +276,19 @@ class Athena:
 			return keys
 
 
+	def getCellIdFromRunKey(self, run_key):
+
+		'''
+		Retruns a dict with Cell Id data, as in themis_obj.CELL_ID
+		'''
+
+		cell_id = (self.CellData.xs(run_key, level=1)
+						.loc[:, ['experiment','unit', 'cell', 'run']]
+						.iloc[0] # dataframe to series by selecting row
+						.to_dict()
+					)
+
+		return cell_id
 
 
 	def getData(self, exp=None, u=None, c=None, r=None, key = None,
@@ -291,6 +304,9 @@ class Athena:
 		----
 		Slice of self.Data as an array, 
 		specific to cell metadata/key, and columns argument.
+
+		Data is transposed into columnar organisation
+		Ie, column names in first row with data in second row beneath
 		'''
 		
 				
