@@ -1849,6 +1849,8 @@ class Themis:
 
 		temp_path.rename(save_path)
 
+		print(f'Saved {self.RUN_KEY} as {save_path}')
+
 
 
 			

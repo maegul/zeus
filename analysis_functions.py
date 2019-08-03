@@ -293,7 +293,7 @@ def analysePolarityData(proj, keys = None, cond_type = 'dl_bar',
 		analysisFuncKeys = {
 			'seg_idx': partial(gen_seg_index, resp=resp),
 			'on_off_idx': gen_on_off_index,
-			'sign_idx': gen_on_off_index
+			'sign_idx': gen_sign_index
 		}
 
 	analysisData = {}

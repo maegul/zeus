@@ -44,3 +44,7 @@ Good to have:
     Should be possible with a good regex
   ☐ Class decorator that saves each method argument as a parameter
     Basically, a decorator that alters each method of the class (much like a function decorator) to inspect the arguments and store them in a class attribute
+
+
+Efficiency Fixes/Improvements:
+  ☐ Use unique values in hermes cell_id checks (using the fuzzy checker)

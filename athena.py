@@ -315,6 +315,21 @@ class Athena:
 
 	def getUniqueKeys(self, filtered_data, return_multi_index=False):
 
+		'''
+		Returns list of strings, each being a unique run key
+
+		Parameters
+		----
+		filtered_data : dataframe
+			A dataframe from an athena object filtered as desired.
+			Must contain cell_id information (ie, CellData or Data)
+
+		return_multi_index : boolean
+			Switch for whether to return the MultiIndex object for each
+			key.
+			If so, two objects return, list of strings, and multiindex object
+		'''
+
 		idx = filtered_data.groupby(by=['experiment', 'unit', 'cell', 'run']).count().index
 
 		keys = [

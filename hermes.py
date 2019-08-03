@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from time import time
@@ -5,6 +6,8 @@ from fuzzywuzzy import fuzz, process
 
 # from collections import OrderedDict as OD
 import inspect
+import pathlib as pathl
+import pickle
 
 # def sortDict(dictionary):
 # 	return OD(sorted(dictionary.items()))
@@ -288,6 +291,28 @@ def appendAnalysisData(analData, key, dataset):
 	return dataset
 
 
+def checkEntries(query, choices):
+	'''
+	General wrapper for using fuzzy search of an entry on a list of choices
+
+	Parameters
+	----
+	query : str
+		Entry that is intended to either be new to choices or to match one value
+	choices : list
+		Previous entries to compare query against
+
+	Returns
+	----
+	Process_results : list
+		list of tuples (2 items).
+		Each tuple contains the result of the match and its relative score
+		[('match', score), ('match2', score2), ...]
+	'''
+
+	proc_results = process.extract(query, choices, scorer = fuzz.partial_ratio)
+
+	return proc_results
 
 
 # Check entries for cell id
