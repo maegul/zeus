@@ -205,6 +205,61 @@ class Athena:
 		self.addThemis(themis_obj)
 
 
+
+	def addTrack(self, track):
+
+		'''
+		Add data from a track object
+
+		track must be a track object (hermes.Track)
+		'''
+		
+		# Check if track experiment matches current data in CellData
+		if track.experiment not in self.CellData.experiment.unique():
+			
+			proc_results = hermes.checkEntries(track.experiment, self.CellData.experiment.unique())
+			
+			print(
+				f'Track experiment {track.experiment} is not in project data \n'
+				f'Close entries: {[p[0] for p in proc_results]} \n'
+				'Track data not added'
+				 )
+			
+			return
+
+		extant_units = self.CellData.query('experiment == @track.experiment').unit.unique()
+
+		for un in track.unit_nos:
+			un = str(un)
+			if un not in extant_units:
+				proc_results = hermes.checkEntries(un, extant_units)
+				
+				print(
+					f'Unit {un} no in project data for experiment {track.experiment} \n'
+					f'Close entries: {[p[0] for p in proc_results]}'
+					'track data not added'
+				)
+				
+				return
+
+		# Assign columns for layer and track information if not already there in Cell Data
+		for col in ['layer', 'rel_layer_depth', 'track']:
+			if col not in self.CellData.columns:
+				self.CellData.assign(**{col: None})
+		
+		# Iterate through each unit, adding its information to the appropriate column
+		for ui, un in enumerate(track.unit_nos):
+			
+			un = str(un)
+			
+			assignment_idx = (self.CellData.experiment == track.experiment) & (self.CellData.unit == un)
+			
+			self.CellData.loc[assignment_idx, 'layer'] = track.unit_layer_labels[ui]
+			self.CellData.loc[assignment_idx, 'rel_layer_depth'] = track.unit_rel_layer_depth[ui]
+			self.CellData.loc[assignment_idx, 'track'] = int(track.track)
+
+
+
 	def addAnalysisData(self, analData, key=None):
 
 		'''
