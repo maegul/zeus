@@ -15,7 +15,7 @@ import pathlib as pthl
 
 from . import hermes
 from . import curveFuncs
-# from . import themis
+from . import themis
 
 
 
@@ -32,7 +32,11 @@ def load(file_path):
 	assert type(file_path) == str, 'File_path must be a string'
 	
 	with open(file_path, 'rb') as f:
-		return pickle.load(f)
+		athena_obj = pickle.load(f)
+
+		athena_obj._absolute_paths['previous_load_path'] = pthl.Path(file_path)
+
+		return athena_obj
 		
 		
 
@@ -74,7 +78,30 @@ class Athena:
 		}
 
 
-	def save(self, file_name = None):
+	def save(self, file_name = None, 
+				use_previous_load = True, use_absolute = False):
+
+		'''
+		Parameters
+		----
+
+		use_previous_load : boolean (True)
+			on load, path used is saved to the athena obj before return
+			under _absolute_paths['previous_load_path'].
+			If True, use this path as the current save path.
+			Helpful when athena_obj has been loaded into an environment
+			with a different working directory from that of the object's
+			source.
+
+		use_absolute : boolean (False)
+			If object has previously been saved (ie, hasattr('SavePath')),
+			then use the absolute path attribute as a quick way to save
+			to the original location of the saved object
+
+			Particularly important when adding data to the athena object with
+			functions like addTrack or addThemis, which then automatically save
+			the athena object.
+		'''
 
 		if file_name is None:
 
@@ -84,8 +111,11 @@ class Athena:
 				self.SavePath = file_name
 				self._absolute_paths['SavePath'] = file_name.absolute()
 
-			else:
-				file_name = self.SavePath
+			elif use_previous_load:
+				file_name = self._absolute_paths['previous_load_path']
+
+			elif use_absolute:
+				file_name = self._absolute_paths['SavePath']
 
 		else:
 			file_name = pthl.Path(file_name)
@@ -101,7 +131,7 @@ class Athena:
 
 		temp_path.rename(file_name)
 
-		print(f'Saved pickle file to {str(self.path)} as {str(file_name.name)}')
+		print(f'Saved pickle file to {str(file_name.parent)} as {str(file_name.name)}')
 
 
 	def addThemis(self, themis_obj, check_redundancy=False):
@@ -257,6 +287,9 @@ class Athena:
 			self.CellData.loc[assignment_idx, 'layer'] = track.unit_layer_labels[ui]
 			self.CellData.loc[assignment_idx, 'rel_layer_depth'] = track.unit_rel_layer_depth[ui]
 			self.CellData.loc[assignment_idx, 'track'] = int(track.track)
+
+		self.save(use_previous_load=True)
+
 
 
 
