@@ -209,7 +209,9 @@ def gen_seg_index(proj, run_key, resp='hist'):
 	assert resp in ['hist', 'sdf'], f'resp "{resp}" not recognised'
 
 	# Retrieving 
-	cell_id = proj.getCellIdFromRunKey(run_key)
+	# cell_id = proj.getCellIdFromRunKey(run_key)
+	cell_id = hermes.mk_cell_id_from_run_key(run_key, proj)
+	
 	themis_file_name = hermes.mk_themis_file_name(**cell_id)
 	themis_obj = themis.load(themis_file_name)
 	

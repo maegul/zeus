@@ -38,6 +38,14 @@
  ☐ Documentation for tuning plotting function
      
 
+Saving:
+  ☐ Where to save a pre-existing object when it has been loaded into a new directory space??? @critical
+    * Currently, it appears that I use the self.save_path attribute, which will be the local path at the time of the initial save.
+    * Could add a use_absolute flag, that allows the user to save in the new directory, because that's what they want
+    * Also, add logic that checks if using the save_path in the current directory will lead to a new absolute path (ie, check if overwriting an existing file)
+    * **PERHAPS BEST WAY** is to add logic to the load function that adds an attribute to the athena or themis or other object for the path from which the object it was originally loaded, which can then be used to save with.
+    * **MAYBE EVEN BETTER** is to have a central registry of where files are relative to a common root
+    and all saving and loading logic goes through this registry, which could simply be a list or dictionary like object saved to file (JSON)
 
 Good to have:
   ☐ change methods to no underscore, and attributes to Capital
