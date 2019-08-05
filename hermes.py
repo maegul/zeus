@@ -9,6 +9,11 @@ import inspect
 import pathlib as pathl
 import pickle
 
+import os
+import fnmatch
+
+import re
+
 # def sortDict(dictionary):
 # 	return OD(sorted(dictionary.items()))
 
@@ -99,6 +104,74 @@ def mk_track_file_name(track_obj = None, experiment = None, track = None):
 
 
 
+def mk_themis_files_directory(proj):
+	'''
+	Generates directory of Themis files for a given project
+
+	proj : Athena Obj
+
+	Returns a dict {run_key : path}
+	path is a str, and is absolute, releative to the machine's root
+	'''
+
+	themis_file_paths = []
+	themis_files = []
+	runs = proj.CellData.index.get_level_values(level=1)
+
+	# Finding the prefix used for themis files
+	# So that changes to the relevant hermes function flow to this
+	# function automatically
+	themis_file_prefix = (
+		re.match(
+			r'([^_]*)_', # prefix = string without '_' before separator '_'
+			mk_themis_file_name( # generate file name from first run key in proj.CellData
+				**mk_cell_id_from_run_key(
+						runs[0], proj
+					)
+				)
+			)
+			.group(1) # take first group
+	)
+
+	for root, dirs, files in os.walk(proj._absolute_paths['path']):
+		
+		# all files that are themis files in this current directory
+		matches =  fnmatch.filter(files, f'{themis_file_prefix}_*.pkl')
+		
+		themis_files.extend(matches)
+		themis_file_paths.extend(
+			[
+				os.path.join(root, m)
+				for m in matches
+			]
+		)
+
+
+	# Initialise directory, where path remains None if not found in matched files
+	run_file_paths = {
+		k : None
+		for k in runs
+	}
+
+	for r in runs:
+		file_name = mk_themis_file_name(
+			**mk_cell_id_from_run_key(r, proj)
+		)
+		
+		try:
+			run_file_paths[r] = themis_file_paths[
+				# Trying to return the index of the generated file name in the list of file names
+				themis_files.index(file_name)
+			]
+		
+		# ValueError is for when list.index(obj) can't find object
+		except ValueError:
+			# leave value of None in directory dict
+			pass
+
+	return run_file_paths
+
+
 def show_info(d, spec_keys=None):
 	'''
 	spec_keys : list
@@ -153,6 +226,25 @@ def mk_cell_key(experiment = None, unit = None, cell = None, run = None,
 		key = f'{experiment}u{unit}c{cell}'
 
 	return key
+
+
+def mk_cell_id_from_run_key(run_key, proj):
+
+	'''
+	Returns a dict similar to themis.CELL_ID that matches the run_key.
+
+	This CELL_ID is derived from the CellData in proj (an athena obj)
+	'''
+
+	cell_id = (
+			proj.CellData.xs(run_key, level=1)
+					.loc[:, ['experiment', 'unit', 'cell', 'run']]
+					.iloc[0] # to convert to series, by selecting row
+					.to_dict()
+		)
+
+	return cell_id
+
 
 
 def mk_cell_key_from_iterable(iterable, pureCellKey = False):

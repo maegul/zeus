@@ -535,6 +535,48 @@ class Athena:
 		))
 
 
+	def genThemisDirectory(self):
+
+		directory = hermes.mk_themis_files_directory(self)
+
+		self.ThemisDirectory = directory
+
+
+	def getThemisObj(self, 
+		run_key = None,
+		experiment = None, unit = None, cell = None, run = None):
+
+
+		'''
+		Returns themis object using run_key or cell_id metadata
+		'''
+
+		assert hasattr(self, 'ThemisDirectory'), (
+			'Project has not generated a ThemisDirectory yet, use self.genThemisDirectory'
+			)
+
+		if run_key is None:
+			assert None not in (experiment, unit, cell, run), (
+				'If not using a run_key, must provide all of experiment, unit, cell and run arguments'
+				)
+
+			run_key = hermes.mk_cell_key(*[experiment, unit, cell, run])
+
+		assert self.ThemisDirectory[run_key] is not None, (
+			f'Run key {run_key} does not have a path in the directory.\n'
+			'Generate the directory again using self.genThemisDirectory to see if it can be found'
+			)
+
+		themis_obj = themis.load(self.ThemisDirectory[run_key])
+
+		return themis_obj
+
+
+
+
+
+
+
 
 def genRSq(xdata, ydata, curveFunc=None, opt_curveFuncArgs=None, curve_vals = None):
 
