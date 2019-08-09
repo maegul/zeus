@@ -134,10 +134,10 @@ def mk_themis_files_directory(proj):
 	)
 
 	for root, dirs, files in os.walk(proj._absolute_paths['path']):
-		
+
 		# all files that are themis files in this current directory
 		matches =  fnmatch.filter(files, f'{themis_file_prefix}_*.pkl')
-		
+
 		themis_files.extend(matches)
 		themis_file_paths.extend(
 			[
@@ -157,13 +157,13 @@ def mk_themis_files_directory(proj):
 		file_name = mk_themis_file_name(
 			**mk_cell_id_from_run_key(r, proj)
 		)
-		
+
 		try:
 			run_file_paths[r] = themis_file_paths[
 				# Trying to return the index of the generated file name in the list of file names
 				themis_files.index(file_name)
 			]
-		
+
 		# ValueError is for when list.index(obj) can't find object
 		except ValueError:
 			# leave value of None in directory dict
@@ -457,7 +457,7 @@ def checkStimParams(stim_params, stimDataSet, splitDataSet = False):
 	for k in stim_params:
 		prev_fields = stimDataSet.columns
 		if k not in prev_fields:
-			
+
 			allGood = False
 
 			proc_results = process.extract(k, prev_fields, scorer=fuzz.partial_ratio)
@@ -491,27 +491,46 @@ def loadTrack(file_path):
 class Track:
 
 	'''
-	Object for track reconstruction
+	object for track reconstruction
 	'''
 	
+	# This can be made simpler
+	# Take cut_plane distance, n_slides between lesions
+	# Actual distance recorded in experiment and slide_width
+	# automatically calculate shrinkage and theta (should be easier and more consistent)
+
 	def __init__(self, experiment, track,
 				lesion_depths, angle,
 				shrinkage, px_scale, slice_width=50):
 		'''
-		
-		Parameters
+		initialise track object
+		include information on track location and dimensions
+
+		parameters
 		----
-		
+
+		lesion_depths : iterable
+			list or iterable of the depths at which lesions
+			were made, as recorded at experiment time
+			by a microdrive etc.
+
+		angle : float (degrees)
+			angle of the electrode track in the plane
+			orthogonal to the histological cutting plane
+
 		shrinkage : float
-			percentage of linear distance LOST through
+			percentage of linear distance lost through
 			processing.
-			Ie, histology_dist = real_dist(1-shrinkage)
-			real_dist = histology_dist / (1-s)
-		
+			ie, histology_dist = real_dist * (1-shrinkage)
+			real_dist = histology_dist / (1-shrinkage)
+
 		pxl_scale : float
-			How many pixels per micrometer (um) of primary 
+			how many pixels per micrometer (um) of primary 
 			histology imagery.
-			Eg, 0.3 means 0.3px per um or 3.3um per px
+			eg, 0.3 means 0.3px per um or 3.3um per px
+
+		slice_width : float (50)
+			width of individual slices of the histology
 		'''
 
 	#     print(inspect.getargvalues(inspect.currentframe()))
@@ -520,7 +539,7 @@ class Track:
 		input_vars = {}
 		input_arg_info = inspect.getargvalues(inspect.currentframe())
 
-		# Take only input arguments prescribed by function definition
+		# take only input arguments prescribed by function definition
 		input_vars.update(
 			{a : input_arg_info.locals[a] 
 			 for a in input_arg_info.args 
@@ -529,71 +548,108 @@ class Track:
 		
 		self.__dict__.update(input_vars)
 
-		# For saving any save paths
+		# for saving any save paths
 		self._absolute_paths = {}
 		
+
 	def setUnits(self, depths, unit_no):
+
+		'''
+		add unit information to track object
+		unit information will be immediately used to calculate 
+		various figures regarding the estimated location of the units.
+		this is done using self._calcDepthValues()
+
+		parameters
+		----
+
+		depths : list/iterable (float)
+			list of floats representing the depths of each
+			unit of this track.
+			
+			as with self.__init__(), depths represent the depth
+			as recorded at experiment time, by a microdrive etc.
+
+		unit_no : list/iterable (int)
+			list of ints representing the numbers assigned to
+			the units of this track.
+			must be in the same order as depths :
+			[123, 647], [2, 3] -> unit 3 depth = 647
+		'''
 		
 		unit_depths = np.array(depths)
 		
-		# This sorting defines the sorting of all subsequent calculations
+		# this sorting defines the sorting of all subsequent calculations
 		sort_idx = np.argsort(unit_depths)
 		
 		self.unit_depths = unit_depths[sort_idx]
 		self.unit_nos = np.array(unit_no)[sort_idx]
+
+		self._calcDepthValues()
 		
-		
+
 	def _hist_dist(self, real_dist):
 		return real_dist * (1-self.shrinkage)
-	
+
 	def _real_dist(self, hist_dist):
 		return hist_dist / (1-self.shrinkage)
-	
+
 	def _px_dist(self, hist_dist):
 		return hist_dist * self.px_scale
-	
+
 	def _hist_from_pxl_dist(self, pxls):
 		return pxls / self.px_scale
-	
+
 	def _cos(self, theta):
 		return np.cos(np.radians(theta))
-	
+
 	def _sin(self, theta):
 		return np.sin(np.radians(theta))
+
 		
-		
-	def calcDepthValues(self):
-		
+	def _calcDepthValues(self):
+
+		'''
+		from track information and unit depths, calculate the
+		location of the units relative to the cutting plane and
+		last lesion
+
+		creates following attributes:
+		self.reference_depth
+		self.depth_values
+		self.df_depth_values
+		'''
+
 		depth_values = {}
-		# Take the deepest lesion as the reference point
+		# take the deepest lesion as the reference point
 		reference_depth = self.lesion_depths[-1]
-		
+
 		depth_values['rel_depth_real'] = self.unit_depths - reference_depth
-		
+
 		depth_values['rel_depth_hist'] = self._hist_dist(depth_values['rel_depth_real'])
-		
+
 		depth_values['rel_depth_hist_cut_plane'] = (
 			depth_values['rel_depth_hist'] * self._cos(self.angle)
 		)
-		
+
 		depth_values['rel_depth_cut_plane_pxl'] = (
 			self._px_dist(depth_values['rel_depth_hist_cut_plane'])
 		)
-		
+
 		depth_values['rel_sag_trans'] = np.abs(
 			depth_values['rel_depth_hist'] * self._sin(self.angle)
 		)
-		
+
 		depth_values['rel_sag_n_slice'] = np.abs(
 			np.round(
 			depth_values['rel_sag_trans'] / self.slice_width,
 			decimals=2
 		)
 		)
-		
+
 		self.reference_depth = reference_depth
 		self.depth_values = depth_values
-		
+
 		self.df_depth_values = pd.DataFrame.from_dict(self.depth_values)
 		self.df_depth_values['unit'] = self.unit_nos
 		self.df_depth_values = self.df_depth_values.set_index('unit')
@@ -601,89 +657,87 @@ class Track:
 		
 	def setLayerDepths(self, borders, layers):
 		'''
-		Define layer borders, heading INTO cortex (from layer 1)
+		define layer borders, heading into cortex (from layer 1)
 		
-		Parameters
+		parameters
 		---
 		borders : list 
 			define when the beginning of the relevant border is.
 			values are presumed to be in pixels of the primary histology
 			images, sharing the same px_scale as provided in self.__init__
 			
-			Relative to the last lesion location, and in cutting plane.
+			relative to the last lesion location, and in cutting plane.
 			
-			MUST be in same order as layers - user discretion.
-			AND, in numerical order (ie smallest depth first)
+			must be in same order as layers - user discretion.
+			and, in numerical order (ie smallest depth first)
 			
-		layers : list[int]
+		layers : list
 			provide labels for the relevant borders, in ints
-			MUST be in same order as borders.
+			must be in same order as borders.
 			
-			Will be converted to strings for labelling purposes
+			will be converted to strings for labelling purposes
 		'''
-		
-		# Check that borders are floats
+
+		# check that borders are floats
 		for b in borders:
 			assert isinstance(b, (int,float)), 'borders must be floats'
-			
-		# check that borders are ordered
+
+			# check that borders are ordered
 		for bi in range(len(borders)-1):
 			assert borders[bi] < borders[bi+1], f'borders should be ordered, entries {bi} and {bi+1} are not'
-			
-		layer_labels = [
-			str(l)
-			for l in layers
-		]
-		
+
+			layer_labels = [
+				str(l)
+				for l in layers
+			]
+
 		self.layer_labels = layer_labels
 		self.layer_borders = borders
-			
-			
-		# Calculate layers each unit belongs in (where possible)
-		
+
+				# calculate layers each unit belongs in (where possible)
+
 		unit_layer_labels = [None] * len(self.unit_depths)
-		
+
 		for ui, ud in enumerate( self.depth_values['rel_depth_cut_plane_pxl'] ):
 			for li, lb in enumerate(self.layer_borders):
-				
+
 				if ud > lb:
 					unit_layer_labels[ui] = self.layer_labels[li]
-					
-		self.unit_layer_labels = unit_layer_labels
-		
-		
-		# Calculate relative position of unit within layer (where possible)
-		
+
+					self.unit_layer_labels = unit_layer_labels
+
+		# calculate relative position of unit within layer (where possible)
+
 		unit_rel_layer_depth = [None] * len(self.unit_depths)
-		
+
 		for ui, ul in enumerate( self.unit_layer_labels):
-			
-			# unit has a layer label and that layer has known end
+
+				# unit has a layer label and that layer has known end
 			if (ul != None) and ( ul != self.layer_labels[-1] ):
-				
+
 				lay_idx = self.layer_labels.index(ul)
 				layer_beg, layer_end = self.layer_borders[lay_idx : lay_idx+2]
-				
-				# unit's location, relative to beginning of layer, normalised to length of layer
+
+						# unit's location, relative to beginning of layer, normalised to length of layer
 				location = round(
 					(self.depth_values['rel_depth_cut_plane_pxl'][ui] - layer_beg) / 
 					(layer_end - layer_beg),
 					3
 				)
-				
+
 				unit_rel_layer_depth[ui] = location
-				
-		self.unit_rel_layer_depth = unit_rel_layer_depth
-		
+
+				self.unit_rel_layer_depth = unit_rel_layer_depth
+
 		self.df_depth_values['layer'] = self.unit_layer_labels
 		self.df_depth_values['rel_layer_depth'] = self.unit_rel_layer_depth
 
 
 	def save(self):
 
-		# Kinda given up on special path changing abilities and enforcement
-		# This object gets saved in the current, path, that simple
-		directory = pathl.Path('.')
+		# kinda given up on special path changing abilities and enforcement
+		# this object gets saved in the current, path, that simple
+		directory = pathl.path('.')
 		file_name = mk_track_file_name(track_obj=self)
 
 		save_path = directory / file_name
@@ -698,12 +752,5 @@ class Track:
 
 		temp_path.rename(save_path)
 
-		print(f'Saved track object as {save_path}')
+		print(f'saved track object as {save_path}')
 
-
-
-
-	# save
-		# pickle, as usual, for whole object
-		# BUT also, csv s of units and lesion
-		# save in histology folder
