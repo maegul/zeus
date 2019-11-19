@@ -6,10 +6,12 @@ from fuzzywuzzy import fuzz, process
 
 # from collections import OrderedDict as OD
 import inspect
-import pathlib as pathl
+import pathlib as pthl
 import pickle
 
 import os
+import shutil
+# import glob
 import fnmatch
 
 import re
@@ -86,6 +88,10 @@ def mk_themis_file_name(themis_obj = None,
 
 	return file_name	
 
+def mk_templating_file_name(experiment=None, unit=None, run=None):
+
+	return f'{experiment}_u{unit}_r{run}.ipynb'
+
 
 def mk_track_file_name(track_obj = None, experiment = None, track = None):
 
@@ -102,6 +108,79 @@ def mk_track_file_name(track_obj = None, experiment = None, track = None):
 
 	return file_name
 
+
+
+def find_project_nb_templates(proj):
+	'''
+	Searches the path of proj for a folder that contains notebook templates
+
+	Such folder expected to be something like nb_template or notebook_template
+
+	regex: ^(nb|notebook).*(template), IGNORECASE
+
+	returns relative path (relative to proj path) if match
+	else, -1
+	'''
+
+	nb_check = re.compile(r'^(nb|notebook).*(template)', flags=re.I)
+
+	for root, dirs, files in os.walk(proj._absolute_paths['path']):
+		for d in dirs:
+			if nb_check.match(d):
+				return d
+
+	return -1
+
+
+# > Copying from Notebook Templates
+
+# adjust below to have templating and analysis type argument so that one function for both
+
+def mk_templating_nb(proj, experiment=None, unit=None, run=None):
+
+	assert hasattr(proj, '_NBTemplateDir'), (
+						'Project has no nb_templates directory ' 
+						'use proj.assignNBTemplateDir() to find, and '
+						'if it does not exist, make it')
+
+	assert None not in (experiment, unit, run), (
+		'Assign values to key word arguments'
+		)
+
+	assert isinstance(experiment, str), 'experiment must be string'
+	experiment = experiment.lower()
+
+	try:
+		unit = int(unit)
+	except ValueError:
+		print(f'argument unit ({unit}) cannot be an integer; must be an integer')
+		return -1
+
+	try:
+		run = int(run)
+	except ValueError:
+		print(f'argument run ({run}) cannot be an integer; must be integer')
+		return -1
+
+
+	template_name = pthl.Path('template.ipynb')
+	template_file = proj._NBTemplateDir['abs_path'] / template_name
+
+	new_file_name = mk_templating_file_name(experiment=experiment, unit=unit, run=run)
+	new_nb_file = proj._absolute_paths['path'] / new_file_name
+
+	assert template_file.exists(), (
+		f'Notebook template of name {template_name} cannot be found '
+		f'in NB template dir {proj._NBTemplateDir}'
+		f'Create or rename notebook file to {template_name}'
+		)
+
+	assert not new_nb_file.exists(), (
+		f'Templating notebook already exists with file name {new_file_name} '
+		f'at location {proj._absolute_paths["path"]}'
+		)
+
+	shutil.copy2(template_file, new_nb_file)
 
 
 def mk_themis_files_directory(proj):
@@ -164,22 +243,37 @@ def mk_themis_files_directory(proj):
 			)
 
 
+	# directory is dict: run_key -> absolute path | None
 	# Initialise directory, where path remains None if not found in matched files
 	run_file_paths = {
 		k : None
 		for k in runs
 	}
 
+
+
+	# Iterate through run_keys
+	# generate appropriate file name for run key from hermes function
+	# search for said file name in themis_files
+	# wrap search in try,except and use index of successful search to retrieve absolute path from 
+	# themis_file_paths (which is in the same order as themis_files)
 	for r in runs:
 		file_name = mk_themis_file_name(
 			**mk_cell_id_from_run_key(r, proj)
 		)
 
 		try:
-			run_file_paths[r] = themis_file_paths[
-				# Trying to return the index of the generated file name in the list of file names
-				themis_files.index(file_name)
-			]
+			file_idx = themis_files.index(file_name)
+
+			run_file_paths[r] = dict(
+				abs_path = themis_file_paths[file_idx],
+				rel_path = themis_relative_file_paths[file_idx]
+				)
+			# run_file_paths[r] = themis_file_paths[
+			# 	# Trying to return the index of the generated file name in the list of file names
+			# 	file_idx
+			# ]
+
 
 		# ValueError is for when list.index(obj) can't find object
 		except ValueError:
