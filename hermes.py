@@ -706,9 +706,9 @@ class Track:
 	# Actual distance recorded in experiment and slide_width
 	# automatically calculate shrinkage and theta (should be easier and more consistent)
 
-	def __init__(self, experiment, track,
-				lesion_depths, angle,
-				shrinkage, px_scale, slice_width=50):
+	def __init__(self, experiment, track, lesion_depths_experimental,
+				lesion_cut_plane_separation, lesion_n_slice_sag_separation, 
+				px_scale, slice_width=50):
 		'''
 		initialise track object
 		include information on track location and dimensions
@@ -716,27 +716,25 @@ class Track:
 		parameters
 		----
 
-		lesion_depths : iterable
+		lesion_depths_experimental : iterable
 			list or iterable of the depths at which lesions
 			were made, as recorded at experiment time
 			by a microdrive etc.
 
-		angle : float (degrees)
-			angle of the electrode track in the plane
-			orthogonal to the histological cutting plane
+		lesion_cut_plane_separation : float (pxls)
+			separation between the lesions, in the histology
+			cutting plane, measured in pxls
 
-		shrinkage : float
-			percentage of linear distance lost through
-			processing.
-			ie, histology_dist = real_dist * (1-shrinkage)
-			real_dist = histology_dist / (1-shrinkage)
+		lesion_n_slice_sag_separation : float (slices)
+			number of histological slices separating the two lesions
+			in the plane orthogonal to the cutting plane
 
 		pxl_scale : float
 			how many pixels per micrometer (um) of primary 
 			histology imagery.
 			eg, 0.3 means 0.3px per um or 3.3um per px
 
-		slice_width : float (50)
+		slice_width : float (default: 50)
 			width of individual slices of the histology
 		'''
 
@@ -753,7 +751,27 @@ class Track:
 			 if a != 'self'}
 		)
 		
-		self.__dict__.update(input_vars)
+		# self.__dict__.update(input_vars)
+
+		self.experiment = experiment
+		self.track = track
+
+		self.lesion_depths_experimental = sorted(lesion_depths_experimental)
+		self.px_scale = px_scale
+		self.slice_width = slice_width
+
+		self.lesion_cut_plane_separation = lesion_cut_plane_separation / self.px_scale
+
+		self.lesion_n_slice_sag_separation = lesion_n_slice_sag_separation
+		self.lesion_sag_separation = lesion_n_slice_sag_separation * slice_width
+
+		self.angle = self._atan(self.lesion_sag_separation , self.lesion_cut_plane_separation)
+
+		self.shrinkage = 1 - (
+				np.hypot(self.lesion_sag_separation, self.lesion_cut_plane_separation) /
+				np.diff(self.lesion_depths_experimental)[0]
+			)
+
 
 		# for saving any save paths
 		self._absolute_paths = {}
@@ -813,6 +831,8 @@ class Track:
 	def _sin(self, theta):
 		return np.sin(np.radians(theta))
 
+	def _atan(self, opp, adj):
+		return np.degrees(np.arctan(opp / adj))
 		
 	def _calcDepthValues(self):
 
@@ -829,7 +849,7 @@ class Track:
 
 		depth_values = {}
 		# take the deepest lesion as the reference point
-		reference_depth = self.lesion_depths[-1]
+		reference_depth = self.lesion_depths_experimental[-1]
 
 		depth_values['rel_depth_real'] = self.unit_depths - reference_depth
 
@@ -944,7 +964,7 @@ class Track:
 
 		# kinda given up on special path changing abilities and enforcement
 		# this object gets saved in the current, path, that simple
-		directory = pathl.path('.')
+		directory = pthl.Path('.')
 		file_name = mk_track_file_name(track_obj=self)
 
 		save_path = directory / file_name
