@@ -110,12 +110,19 @@ def mk_themis_files_directory(proj):
 
 	proj : Athena Obj
 
-	Returns a dict {run_key : path}
-	path is a str, and is absolute, releative to the machine's root
+	Returns a dict of dicts {run_key : {abs_path : str, rel_path : str}}
+	paths are str. abs_path paths are absolute, 
+	relative paths are relative to the proj absolute_paths path
 	'''
 
-	themis_file_paths = []
+	# for the file names of the themis files
 	themis_files = []
+	# for the absolute paths of the themis files
+	themis_file_paths = []
+	# for the paths relative to proj file of the themis files
+	themis_relative_file_paths = []
+
+	# get the run keys from the proj dataframe
 	runs = proj.CellData.index.get_level_values(level=1)
 
 	# Finding the prefix used for themis files
@@ -133,6 +140,10 @@ def mk_themis_files_directory(proj):
 			.group(1) # take first group
 	)
 
+	# walk through proj path
+	# Look for all files that match the themis_file prefix and are ".pkl" files
+	# add matched file names to themis_files
+	# create absolute path and add to themis_file_paths
 	for root, dirs, files in os.walk(proj._absolute_paths['path']):
 
 		# all files that are themis files in this current directory
@@ -145,6 +156,12 @@ def mk_themis_files_directory(proj):
 				for m in matches
 			]
 		)
+		themis_relative_file_paths.extend(
+			[
+				os.path.relpath( os.path.join(root, m), proj._absolute_paths['path'] )
+				for m in matches
+			]
+			)
 
 
 	# Initialise directory, where path remains None if not found in matched files
@@ -168,6 +185,102 @@ def mk_themis_files_directory(proj):
 		except ValueError:
 			# leave value of None in directory dict
 			pass
+
+	return run_file_paths
+
+
+def mk_track_files_directory(proj):
+	'''
+	Creates directory of track object files for the provided project object
+	'''
+
+	# for the file names of the themis files
+	track_files = []
+	# for the absolute paths of the track files
+	track_file_paths = []
+	# for the paths relative to proj file of the track files
+	track_relative_file_paths = []
+
+	# get the run keys from the proj dataframe
+	runs = proj.CellData.index.get_level_values(level=1)
+
+	# Finding the prefix used for track files
+	# So that changes to the relevant hermes function flow to this
+	# function automatically
+
+	# Pull out relevant data from cell that has some track data
+	runs_with_track_data = proj.CellData.query('not track.isnull()')
+	# check if any track data in project
+	assert runs_with_track_data.index.size > 0, ('No track data assigned in project',
+												 'no point in building directory')
+	# pull out first experiment and track no
+	track_exp, track_no = runs_with_track_data.iloc[0][['experiment', 'track']]
+
+	track_file_prefix = (
+		re.match(
+			r'([^_]*)_', # prefix = string without '_' before separator '_'
+			mk_track_file_name(experiment=track_exp,  track=track_no)
+					)
+			).group(1) # take first group
+
+	# walk through directory
+	# find and append matched files, paths and rel_paths
+	for root, dirs, files in os.walk(proj._absolute_paths['path']):
+
+		matches = fnmatch.filter(files, f'{track_file_prefix}_*.pkl')
+		track_files.extend(matches)
+		track_file_paths.extend(
+			[
+				os.path.join(root, m)
+				for m in matches
+			]
+			)
+
+		track_relative_file_paths.extend(
+			[
+				os.path.relpath( os.path.join(root, m), proj._absolute_paths['path'])
+				for m in matches
+			]
+			)
+
+	# initialise directory
+	run_file_paths = {
+		k: None
+		for k in runs
+	}
+
+	for r in runs:
+
+		run_data = proj.CellData.xs(r, level=1)
+
+
+		# If no track data is assigned to the run in the project,
+		# Then there is no way to create a putative file name for the track
+		# Thus, without track data in the project, the file cannot appear in
+		# the directory
+
+		if pd.isnull(run_data.track.values[0]):
+			continue
+
+		else:
+			# create file names from run key
+			file_name = mk_track_file_name(experiment=run_data.experiment.values[0], track = run_data.track.values[0])
+
+			try:
+				file_idx = track_files.index(file_name)
+
+				run_file_paths[r] = dict(
+					abs_path = track_file_paths[file_idx],
+					rel_path = track_relative_file_paths[file_idx]
+					)
+
+			# if can't find file in list
+			except ValueError:
+				# leave value of None in directory dict
+				pass
+
+
+
 
 	return run_file_paths
 
