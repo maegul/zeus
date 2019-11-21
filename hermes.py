@@ -183,7 +183,8 @@ def mk_templating_nb(proj, experiment=None, unit=None, run=None):
 	shutil.copy2(template_file, new_nb_file)
 
 
-def mk_themis_files_directory(proj):
+
+def mk_themis_files_directory(proj, return_strays=False):
 	'''
 	Generates directory of Themis files for a given project
 
@@ -266,21 +267,25 @@ def mk_themis_files_directory(proj):
 			file_idx = themis_files.index(file_name)
 
 			run_file_paths[r] = dict(
-				abs_path = themis_file_paths[file_idx],
-				rel_path = themis_relative_file_paths[file_idx]
+				abs_path = themis_file_paths.pop(file_idx),
+				rel_path = themis_relative_file_paths.pop(file_idx)
 				)
-			# run_file_paths[r] = themis_file_paths[
-			# 	# Trying to return the index of the generated file name in the list of file names
-			# 	file_idx
-			# ]
 
+			# Not entirely happy about this popping business
+			# For instance, how do duplictes work now ?!
+			# Need to tidy up this code
+			themis_files.pop(file_idx)
 
 		# ValueError is for when list.index(obj) can't find object
 		except ValueError:
 			# leave value of None in directory dict
 			pass
 
-	return run_file_paths
+	if return_strays:
+		return themis_file_paths, themis_relative_file_paths
+
+	else:
+		return run_file_paths
 
 
 def mk_track_files_directory(proj):
