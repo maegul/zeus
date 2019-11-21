@@ -193,6 +193,15 @@ def mk_themis_files_directory(proj, return_strays=False):
 	Returns a dict of dicts {run_key : {abs_path : str, rel_path : str}}
 	paths are str. abs_path paths are absolute, 
 	relative paths are relative to the proj absolute_paths path
+
+
+	Parameters
+	----	
+	return_strays : bool
+		If true, don't return directory.
+		Instead, return list of (absolute) file paths and relative file paths
+		of those files that matched the regex search but not a particular run key
+		stored in project.CellData
 	'''
 
 	# for the file names of the themis files
@@ -288,9 +297,17 @@ def mk_themis_files_directory(proj, return_strays=False):
 		return run_file_paths
 
 
-def mk_track_files_directory(proj):
+def mk_track_files_directory(proj, return_strays=False):
 	'''
 	Creates directory of track object files for the provided project object
+
+	Parameters
+	----
+	return_strays : bool
+		If true, don't return directory.
+		Instead, return list of (absolute) file paths and relative file paths
+		of those files that matched the regex search but not a particular run key
+		stored in project.CellData
 	'''
 
 	# for the file names of the themis files
@@ -369,9 +386,11 @@ def mk_track_files_directory(proj):
 				file_idx = track_files.index(file_name)
 
 				run_file_paths[r] = dict(
-					abs_path = track_file_paths[file_idx],
-					rel_path = track_relative_file_paths[file_idx]
+					abs_path = track_file_paths.pop(file_idx),
+					rel_path = track_relative_file_paths.pop(file_idx)
 					)
+
+				track_files.pop(file_idx)
 
 			# if can't find file in list
 			except ValueError:
@@ -381,7 +400,10 @@ def mk_track_files_directory(proj):
 
 
 
-	return run_file_paths
+	if return_strays:
+		return track_file_paths, track_relative_file_paths
+	else:
+		return run_file_paths
 
 
 def show_info(d, spec_keys=None):
