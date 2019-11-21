@@ -88,9 +88,13 @@ def mk_themis_file_name(themis_obj = None,
 
 	return file_name	
 
-def mk_templating_file_name(experiment=None, unit=None, run=None):
+def mk_nb_file_name(nb_type = None, experiment=None, unit=None, run=None):
 
-	return f'{experiment}_u{unit}_r{run}.ipynb'
+	if nb_type == 'temp':
+		return f'{experiment}_u{unit}_r{run}.ipynb'
+	elif nb_type == 'anal':
+		return f'{experiment}_u{unit}_analysis.ipynb'
+
 
 
 def mk_track_file_name(track_obj = None, experiment = None, track = None):
@@ -136,15 +140,38 @@ def find_project_nb_templates(proj):
 
 # adjust below to have templating and analysis type argument so that one function for both
 
-def mk_templating_nb(proj, experiment=None, unit=None, run=None):
+def mk_new_nb(proj, nb_type = None, experiment=None, unit=None, run=None):
+	'''
+	Parameters
+	----
+	nb_type : str (template | analysis)
+		What type of notebook to make (and therefore what type of template to copy)	
+		temp -> for templating, and for a particular run 
+		anal -> for analysing all the runs of a particular unit (run arg igored)
+	'''
+
+	template_names = dict(
+		temp = pthl.Path('template.ipynb'),
+		anal = pthl.Path('analysis.ipynb')
+		)
+
+	temp_types_need_run = ['temp']
+
+	assert nb_type in template_names.keys(), (
+		f'nb_type ({nb_type}) must be one of {template_names.keys()}'
+		)
 
 	assert hasattr(proj, '_NBTemplateDir'), (
 						'Project has no nb_templates directory ' 
 						'use proj.assignNBTemplateDir() to find, and '
 						'if it does not exist, make it')
 
-	assert None not in (experiment, unit, run), (
+	assert None not in (experiment, unit), (
 		'Assign values to key word arguments'
+		)
+
+	assert run is not None and nb_type not in temp_types_need_run, (
+		f'If nb_type is in {temp_types_need_run}, must provide run arg'
 		)
 
 	assert isinstance(experiment, str), 'experiment must be string'
@@ -163,11 +190,12 @@ def mk_templating_nb(proj, experiment=None, unit=None, run=None):
 		return -1
 
 
-	template_name = pthl.Path('template.ipynb')
+	# template_name = pthl.Path('template.ipynb')
+	template_name = template_names[nb_type]
 	template_file = proj._NBTemplateDir['abs_path'] / template_name
 
-	new_file_name = mk_templating_file_name(experiment=experiment, unit=unit, run=run)
-	new_nb_file = proj._absolute_paths['path'] / new_file_name
+	new_file_name = mk_nb_file_name(nb_type=nb_type, experiment=experiment, unit=unit, run=run)
+	new_nb_file_path = proj._absolute_paths['path'] / new_file_name
 
 	assert template_file.exists(), (
 		f'Notebook template of name {template_name} cannot be found '
@@ -175,13 +203,16 @@ def mk_templating_nb(proj, experiment=None, unit=None, run=None):
 		f'Create or rename notebook file to {template_name}'
 		)
 
-	assert not new_nb_file.exists(), (
+	assert not new_nb_file_path.exists(), (
 		f'Templating notebook already exists with file name {new_file_name} '
 		f'at location {proj._absolute_paths["path"]}'
 		)
 
-	shutil.copy2(template_file, new_nb_file)
+	print(f'Copying \n{template_file} to \n{new_nb_file_path} ...')
 
+	shutil.copy2(template_file, new_nb_file_path)
+
+	print('Done')
 
 
 def mk_themis_files_directory(proj, return_strays=False):
