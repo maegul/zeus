@@ -229,10 +229,37 @@ def mk_new_nb(proj, nb_type = None, experiment=None, unit=None, run=None):
 
 # > Directories
 
-def mk_nb_files_directory(proj, return_strays=False):
+def mk_nb_files_directory(proj, nb_type = None, return_strays=False):
+	'''
+	nb_type : str (temp | anal)
+		Specifies what type of notebook is to be searched for	
+	'''
 
 
-	# Just templating notebooks for now
+	nb_type_opts = ['temp', 'anal']
+	assert nb_type in nb_type_opts, (
+		f'nb_type must be either of {nb_type_opts}, not {nb_type}'
+		)
+
+	# define patterns for finding candidates for both nb types
+	nb_file_patterns = {
+		nbt : mk_nb_file_name(nb_type=nbt).replace('none', '*')
+		for nbt in nb_type_opts
+	}
+
+
+	# define functions for generating no_cell keys from run keys
+	# as appropriate for both nb types
+
+	# matches anything that is (<exp>u<unit>)(c<cell>)(r<run>)
+	no_cell_pat = re.compile(r'(.*u.+)(c.+)(r.+)')
+
+	if nb_type == 'temp':
+		no_cell = lambda run_key : no_cell_pat.sub(r'\1\3', run_key)
+
+	elif nb_type == 'anal':
+		no_cell = lambda run_key : no_cell_pat.sub(r'\1', run_key)
+
 	nb_files, nb_file_paths, nb_relative_file_paths = [], [], []	
 
 	runs = mk_cell_id_from_many_run_keys('all', proj)
@@ -244,7 +271,10 @@ def mk_nb_files_directory(proj, return_strays=False):
 	# generate matching pattern by calling file name function, with
 	# default args and replacing all the lowercase 'none' with '*' to allow for
 	# finding the variations in the directory
-	nb_file_pattern = mk_nb_file_name(nb_type='temp').replace('none', '*')
+
+	# nb_file_pattern = mk_nb_file_name(nb_type=nb_type).replace('none', '*')
+	# nb_file_pattern = mk_nb_file_name(nb_type='temp').replace('none', '*')
+	nb_file_pattern = nb_file_patterns[nb_type]
 	for root, dirs, files in os.walk(proj._absolute_paths['path']):
 
 		matches = fnmatch.filter(files, nb_file_pattern)
@@ -274,14 +304,10 @@ def mk_nb_files_directory(proj, return_strays=False):
 	###
 
 	# Keys are run keys, without the cell
-	# So that runs that differ only by the cell can have their notebooks cached
-	# As templating notebooks are specific to exp, unit, run (not cells)
+	# So that runs that differ only by the cell can have their notebooks cached and retrieved
+	# as templating notebooks are specific to exp, unit, run (not cells)
 	paths_cache = {}
 
-	# matches anything that is <exp>u<unit>c<cell>r<run>
-	no_cell_pat = re.compile(r'(.*u.+)(c.+)(r.+)')
-
-	no_cell = lambda run_key : no_cell_pat.sub(r'\1\3', run_key)
 
 	# go through all run keys
 	for r, cell_id in runs.items():
@@ -299,7 +325,7 @@ def mk_nb_files_directory(proj, return_strays=False):
 		else:
 
 			# Generate putative file name, to be searched for in the list of candidates
-			file_name = mk_nb_file_name(nb_type='temp',
+			file_name = mk_nb_file_name(nb_type=nb_type,
 				**{arg : cell_id[arg] for arg in ['experiment', 'unit', 'run']}
 			)
 
