@@ -5,6 +5,7 @@ import pandas as pd
 
 import pickle
 import inspect
+# import os
 # import glob
 # import copy
 
@@ -573,6 +574,39 @@ class Athena:
 		directory = hermes.mk_themis_files_directory(self)
 
 		self.ThemisDirectory = directory
+
+
+	def genTrackDirectory(self):
+
+		directory = hermes.mk_track_files_directory(self)
+
+		self.TrackDirectory = directory
+
+
+	def genNBDirectory(self, nb_type=None):
+
+		nb_type_opts = ['temp', 'anal']
+		assert nb_type in nb_type_opts, f'nb_type must be one of {nb_type_opts}'
+
+		if nb_type == 'temp':
+			self.NBTempDirectory = hermes.mk_nb_files_directory(self, nb_type=nb_type)
+		if nb_type == 'anal':
+			self.NBAnalDirectory = hermes.mk_nb_files_directory(self, nb_type=nb_type)
+
+
+	def assignNBTemplateDir(self, force=False):
+
+		if not hasattr(self, '_NBTemplateDir') or force:
+			template_dir = hermes.find_project_nb_templates(self)
+			assert template_dir != -1, 'no template directory found'
+
+			self._NBTemplateDir = dict(
+				abs_path = self._absolute_paths['path'] / pthl.Path(template_dir),
+				rel_path = pthl.Path(template_dir)
+				)
+
+		else:
+			print(f'NB Template already assiged as {self._NBTemplateDir["abs_path"]}')
 
 
 	def getThemisObj(self, 
