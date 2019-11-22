@@ -42,6 +42,9 @@ def dictFromArgs(args, includeNone = True):
 	return argsDict
 
 
+
+# > Project ID
+
 def mkUID():
 	'''
 	Generates Unique ID from system time
@@ -64,6 +67,8 @@ def mk_project_ID(name = None, description = None):
 
 	return proj_id
 
+
+# > File Names
 
 def mk_themis_file_name(themis_obj = None, 
 	experiment = None, unit = None, cell = None, run = None):
@@ -89,11 +94,18 @@ def mk_themis_file_name(themis_obj = None,
 	return file_name	
 
 def mk_nb_file_name(nb_type = None, experiment=None, unit=None, run=None):
+	'''
+	Return file name for a notebook appropriate for the given arguments
+
+	nb_type : str ('temp' | 'anal')
+		temp -> templating notebok	
+		anal -> analysis notebook
+	'''
 
 	if nb_type == 'temp':
-		return f'{experiment}_u{unit}_r{run}.ipynb'
+		return f'{experiment}_u{unit}_r{run}.ipynb'.lower()
 	elif nb_type == 'anal':
-		return f'{experiment}_u{unit}_analysis.ipynb'
+		return f'{experiment}_u{unit}_analysis.ipynb'.lower()
 
 
 
@@ -113,6 +125,8 @@ def mk_track_file_name(track_obj = None, experiment = None, track = None):
 	return file_name
 
 
+
+# > Make New NBs
 
 def find_project_nb_templates(proj):
 	'''
@@ -136,7 +150,6 @@ def find_project_nb_templates(proj):
 	return -1
 
 
-# > Copying from Notebook Templates
 
 # adjust below to have templating and analysis type argument so that one function for both
 
@@ -213,6 +226,110 @@ def mk_new_nb(proj, nb_type = None, experiment=None, unit=None, run=None):
 	shutil.copy2(template_file, new_nb_file_path)
 
 	print('Done')
+
+# > Directories
+
+def mk_nb_files_directory(proj, return_strays=False):
+
+
+	# Just templating notebooks for now
+	nb_files, nb_file_paths, nb_relative_file_paths = [], [], []	
+
+	runs = mk_cell_id_from_many_run_keys('all', proj)
+
+	###
+	# Find candidates
+	###
+
+	# generate matching pattern by calling file name function, with
+	# default args and replacing all the lowercase 'none' with '*' to allow for
+	# finding the variations in the directory
+	nb_file_pattern = mk_nb_file_name(nb_type='temp').replace('none', '*')
+	for root, dirs, files in os.walk(proj._absolute_paths['path']):
+
+		matches = fnmatch.filter(files, nb_file_pattern)
+
+		nb_files.extend(matches)
+		nb_file_paths.extend(
+			[
+				os.path.join(root, m)
+				for m in matches
+			]
+		)
+		nb_relative_file_paths.extend(
+			[
+				os.path.relpath( os.path.join(root, m), proj._absolute_paths['path'])
+				for m in matches
+			]
+		)
+
+	run_file_paths = {
+		k: None
+		for k in runs.keys()
+	}
+
+
+	###
+	# Try to match candidates to run keys
+	###
+
+	# Keys are run keys, without the cell
+	# So that runs that differ only by the cell can have their notebooks cached
+	# As templating notebooks are specific to exp, unit, run (not cells)
+	paths_cache = {}
+
+	# matches anything that is <exp>u<unit>c<cell>r<run>
+	no_cell_pat = re.compile(r'(.*u.+)(c.+)(r.+)')
+
+	no_cell = lambda run_key : no_cell_pat.sub(r'\1\3', run_key)
+
+	# go through all run keys
+	for r, cell_id in runs.items():
+
+		# convert each run key to a no_cell version (cell info removed)
+		nc_run = no_cell(r)
+
+		# check if key in paths_cache
+		if nc_run in paths_cache:
+
+			# If so, then take paths object from cache and use this
+			run_file_paths[r] = paths_cache[nc_run]
+
+		# If not, then look for the paths in the list and pop them if found
+		else:
+
+			# Generate putative file name, to be searched for in the list of candidates
+			file_name = mk_nb_file_name(nb_type='temp',
+				**{arg : cell_id[arg] for arg in ['experiment', 'unit', 'run']}
+			)
+
+			try:
+				file_idx = nb_files.index(file_name)
+
+				paths_object = dict(
+						abs_path = nb_file_paths.pop(file_idx),
+						rel_path = nb_relative_file_paths.pop(file_idx)
+					)
+
+				run_file_paths[r] = paths_object
+				paths_cache[nc_run] = paths_object # store paths object in cache
+
+				nb_files.pop(file_idx) # pop file from file list
+
+			except ValueError:
+				pass
+
+	if return_strays:
+		return nb_file_paths, nb_relative_file_paths
+
+	else:
+		return run_file_paths
+
+
+
+
+
+
 
 
 def mk_themis_files_directory(proj, return_strays=False):
@@ -462,6 +579,8 @@ def show_info(d, spec_keys=None):
 		print(f'{k}:{space}{d[k]}')
 
 
+# > Cell ID and Key
+
 def mk_cell_ID(experiment = None, unit = None, cell = None, run = None):
 
 	args = inspect.getargvalues(inspect.currentframe())
@@ -509,6 +628,28 @@ def mk_cell_id_from_run_key(run_key, proj):
 		)
 
 	return cell_id
+
+
+def mk_cell_id_from_many_run_keys(run_keys, proj):
+	'''
+	Like mk_cell_id_from_run_key but for many run keys.
+	Returns a dict of dicts : {run_key: {cell_id} }
+
+	run_keys : iterable(strs) | 'all'
+		if iterable, must be of strs/objects, each a run_key
+		if 'all', then all runs are returned
+	'''
+
+	# slice(None) -> ':' for .loc[]
+	run_keys = slice(None) if run_keys == 'all' else run_keys
+
+	cell_idx = (
+		proj.CellData.reset_index(level='cell_key', drop=True)
+			.loc[run_keys, ['experiment', 'unit', 'cell', 'run']]
+			.to_dict(orient='index')
+		)
+
+	return cell_idx
 
 
 
