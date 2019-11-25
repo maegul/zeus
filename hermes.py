@@ -277,6 +277,10 @@ def mk_nb_files_directory(proj, nb_type = None, return_strays=False):
 	nb_file_pattern = nb_file_patterns[nb_type]
 	for root, dirs, files in os.walk(proj._absolute_paths['path']):
 
+		# prune ipynb checkpoints from directories that will be walked
+		if '.ipynb_checkpoints' in dirs:
+			dirs.remove('.ipynb_checkpoints')
+
 		matches = fnmatch.filter(files, nb_file_pattern)
 
 		nb_files.extend(matches)
