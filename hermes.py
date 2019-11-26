@@ -155,6 +155,13 @@ def find_project_nb_templates(proj):
 
 def mk_new_nb(proj, nb_type = None, experiment=None, unit=None, run=None):
 	'''
+	Makes a new notebook in the root path of the project provided
+
+	Notebook is copied from a template.  Location of templates must be
+	recorded in proj object.
+
+	nb_type determines which template is copied
+
 	Parameters
 	----
 	nb_type : str (template | analysis)
@@ -337,8 +344,8 @@ def mk_nb_files_directory(proj, nb_type = None, return_strays=False):
 				file_idx = nb_files.index(file_name)
 
 				paths_object = dict(
-						abs_path = nb_file_paths.pop(file_idx),
-						rel_path = nb_relative_file_paths.pop(file_idx)
+						abs_path = pthl.Path(nb_file_paths.pop(file_idx)),
+						rel_path = pthl.Path(nb_relative_file_paths.pop(file_idx))
 					)
 
 				run_file_paths[r] = paths_object
@@ -454,8 +461,8 @@ def mk_themis_files_directory(proj, return_strays=False):
 			file_idx = themis_files.index(file_name)
 
 			run_file_paths[r] = dict(
-				abs_path = themis_file_paths.pop(file_idx),
-				rel_path = themis_relative_file_paths.pop(file_idx)
+				abs_path = pthl.Path(themis_file_paths.pop(file_idx)),
+				rel_path = pthl.Path(themis_relative_file_paths.pop(file_idx))
 				)
 
 			# Not entirely happy about this popping business
@@ -543,9 +550,17 @@ def mk_track_files_directory(proj, return_strays=False):
 		for k in runs
 	}
 
+	# For storing paths for any given experiment x track combination so that all
+	# runs of the same experiment and track number need only retrieve from the cache
+	# after the first hit
+	paths_cache = {}
+
 	for r in runs:
 
 		run_data = proj.CellData.xs(r, level=1)
+		# For use in paths_cache as key
+		# all track files are specific to an experiment and a track, thus this tuple as a key
+		exp_track = tuple(run_data.loc[:, ['experiment', 'track']].values[0])
 
 
 		# If no track data is assigned to the run in the project,
@@ -557,26 +572,39 @@ def mk_track_files_directory(proj, return_strays=False):
 			continue
 
 		else:
-			# create file names from run key
-			file_name = mk_track_file_name(experiment=run_data.experiment.values[0], track = run_data.track.values[0])
 
-			try:
-				file_idx = track_files.index(file_name)
+			# If in cache, take from cache
+			if exp_track in paths_cache:
+				run_file_paths[r] = paths_cache[exp_track]
 
-				run_file_paths[r] = dict(
-					abs_path = track_file_paths.pop(file_idx),
-					rel_path = track_relative_file_paths.pop(file_idx)
-					)
+			# If not in cache, generate file name and search candidate track files
+			else:
 
-				track_files.pop(file_idx)
+				# create file names from run key
+				file_name = mk_track_file_name(
+					experiment=run_data.experiment.values[0], 
+					track = run_data.track.values[0]
+				)
 
-			# if can't find file in list
-			except ValueError:
-				# leave value of None in directory dict
-				pass
+				# Try to search for file_name in candidate track files
+				try:
+					file_idx = track_files.index(file_name)
 
+					paths_object = dict(
+						abs_path = pthl.Path(track_file_paths.pop(file_idx)),
+						rel_path = pthl.Path(track_relative_file_paths.pop(file_idx))
+						)
 
+					track_files.pop(file_idx)
 
+					# Append paths_object to list of paths and to cache using exp_track tuple key
+					run_file_paths[r] = paths_object
+					paths_cache[exp_track] = paths_object
+
+				# if can't find file in list
+				except ValueError:
+					# leave value of None in directory dict
+					pass
 
 	if return_strays:
 		return track_file_paths, track_relative_file_paths
