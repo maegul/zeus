@@ -6,6 +6,6 @@ h5py==2.8.0
 scipy==1.2.1
 matplotlib==3.1.1
 fuzzywuzzy==0.17.0
-tridesclous==1.1.0.dev0
+tridesclous==1.1.0
 pandas==0.23.4
 pyth==0.6.0
