@@ -1,14 +1,54 @@
 
- ☐ Subtraction of spontaneous activity @high
+
+File Management:
+  Need to deal with many notebooks and pkl files
+  ✔ Function for naming of notebooks according to relevant metadata @done (19-11-20 14:34)
+    ✔ Templating notebooks (exp, unit) @done (19-11-19 22:16)
+    ✔ Unit analysis (exp, unit) @done (19-11-20 11:16)
+  ☐ Make tool / functions to achieve following:
+
+    ☐ Search and catalogue all notebook files and pkl files according to exp_cell_run metadata
+      ✔ Find all themis files for a given project @done (19-11-19 13:11)
+        * themis file -> exp,unit,run,cell
+        ✔ Report absolute paths @done (19-11-05 17:55)
+        ✔ Report relative paths too @done (19-11-07 14:46)
+        ✔ Append to project @done (19-11-05 17:55)
+
+      ✔ As above but for notebooks @done (19-11-23 00:17)
+        (template, ie, like Heph, and unit analysis, also like Hpeh ... -> exp, unit)
+      ✔ As above for track files @done (19-11-19 13:10)
+
+      ☐ Find all Heph files
+        * heph -> exp, unit
+        ☐ Absolute paths
+        ☐ Relative paths
+        ☐ Append to project
+
+
+
+      ☐ For all three (themis, heph, track), make functions in athena for retrieval of each
+
+    ☐ Check for missing files (ie, do all registered units have a file)
+    ☐ search and Report on file paths for particular unit / exp ... etc
+    ✔ Automatically create notebooks for a new unit (copy template) @done (19-11-23 00:51)
+
+Version Control Automation:
+  ☐ Automatic git commit (with informed commit message) on save of any object (athena, themis, track)
+    Track only pkl files
+    If track notebook files too, need to find way to strip results I suppose so that procedure is all that is saved (redundant? .. this is about saving data)
+    * informed commit message: object doing saving (themis, athena etc, basically the file name of the object)
+  
+General Proto Type:
+ ✔ Subtraction of spontaneous activity @high @done (19-11-04 12:21)
      1 second before markers should be safely blank!
 
- ☐ Clean way of extracting only one side of biphasic responses @high
+ ✔ Clean way of extracting only one side of biphasic responses @high @done (19-11-04 12:21)
 
 
 
 
  ☐ Functions for checking data and output paths, and, changing them (for file mobility)
- ☐ Functions for 
+ ✔ Functions for @done (19-11-04 12:23)
    ✔ updating, @done (19-02-05 01:41)
    ✔ encoding and @done (19-02-27 22:07)
    ✔ checking the meta data of a run on a cell @done (19-02-27 22:07)
@@ -16,14 +56,14 @@
  ☐ Loading multiunit data from heph objects
    Key problem right now is the logic for extracting spike averages and the like, as they are given slightly different attribute names
    
-   ☐ Project
+   ✔ Project @done (19-11-04 12:22)
      shared function between athena and zeus, given particular project Title, Description generate ... 
-       ☐ Unique Identifier (hash? of title, description and date time of creation?)
-       ☐ Abbreviated title (user provided?)
+       ✔ Unique Identifier (hash? of title, description and date time of creation?) @done (19-11-04 12:22)
+       ✔ Abbreviated title (user provided?) @done (19-11-04 12:22)
      to be used in file names
-     ☐ Once generated, can pass a file reference or object to either a zeus or athena object to attach an associated with the project
+     ✔ Once generated, can pass a file reference or object to either a zeus or athena object to attach an associated with the project @done (19-11-04 12:22)
 
-   ☐ Cell identity:
+   ✔ Cell identity: @done (19-11-04 12:22)
      * Experiment (ie MBC23)
      * Unit
      * Cell (cluster label or cell number within single recording)
@@ -39,13 +79,27 @@
      
 
 Saving:
-  ☐ Where to save a pre-existing object when it has been loaded into a new directory space??? @critical
+  ✔ Where to save a pre-existing object when it has been loaded into a new directory space??? @critical @done (19-08-07 22:22)
     * Currently, it appears that I use the self.save_path attribute, which will be the local path at the time of the initial save.
     * Could add a use_absolute flag, that allows the user to save in the new directory, because that's what they want
     * Also, add logic that checks if using the save_path in the current directory will lead to a new absolute path (ie, check if overwriting an existing file)
-    * **PERHAPS BEST WAY** is to add logic to the load function that adds an attribute to the athena or themis or other object for the path from which the object it was originally loaded, which can then be used to save with.
+    * **DONE LIKE THIS** -->  **PERHAPS BEST WAY** is to add logic to the load function that adds an attribute to the athena or themis or other object for the path from which the object it was originally loaded, which can then be used to save with.
     * **MAYBE EVEN BETTER** is to have a central registry of where files are relative to a common root
     and all saving and loading logic goes through this registry, which could simply be a list or dictionary like object saved to file (JSON)
+      * maybe too much?  Perhaps just go through previous load option, but use this as a check? 
+
+  ✔ Make themis file directory @done (19-08-07 22:26)
+    * Functions to scan from project directory downward for themis files
+    * stored as dictionary
+
+  ☐ Incorporate Themis directory into functions for opening and using themis obj files
+    * general opening function
+    * analysis functions (the polarity analysis function for instance)
+
+  ☐ Generally ... improve saving
+    * overwriting only when forced
+    * all file names through hermes
+    * experiment in Heph file names
 
 Good to have:
   ☐ change methods to no underscore, and attributes to Capital

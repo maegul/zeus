@@ -205,13 +205,20 @@ def gen_sign_index(proj, run_key):
 
 
 def gen_seg_index(proj, run_key, resp='hist'):
-	
+
+	# Options:
+		# Subtract SE
+		# Use schiller linear-segregation (requires new function)
+
 	assert resp in ['hist', 'sdf'], f'resp "{resp}" not recognised'
 
 	# Retrieving 
 	# cell_id = proj.getCellIdFromRunKey(run_key)
 	cell_id = hermes.mk_cell_id_from_run_key(run_key, proj)
-	
+
+
+	# Problem here ... presumes that themis object files are in current directory
+	# in future, analysis should be doable with nested file structures	
 	themis_file_name = hermes.mk_themis_file_name(**cell_id)
 	themis_obj = themis.load(themis_file_name)
 	

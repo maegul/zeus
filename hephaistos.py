@@ -1264,6 +1264,11 @@ def plotCompareSpikesRuns(unit_a, unit_b, cells=[], run_labels=[], figsize=[12,6
 	
 	if len(run_labels) == 0:
 		run_labels = ['Run a', 'Run b']
+	else:
+		run_labels = [
+			'r ' + str(label)
+			for label in run_labels
+		]
 	
 	
 	plt.figure(figsize=figsize)
