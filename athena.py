@@ -676,6 +676,140 @@ class Athena:
 
 		return themis_obj
 
+	def getTrackObj(self, cell_key = None, run_key = None, 
+		experiment=None, unit=None):
+		'''
+		Returns a track object using either a run/cell key or cell metadata
+
+		parameters
+		----
+		cell_key, run_key : str
+			Either a run or cell key.
+			They are interchangeable as the track objects are experiment and unit specific
+			any information such as cell or run is irrelevant
+
+		experiment, unit : str
+			If cell_key, run_key is None, these must be provided.  Else, they are redundant.	
+		'''
+
+		# As the track directory is specific to the run key
+		# To get the path of the track object, the first appropriate run
+		# key must be retrieved to use the track directory
+
+		if cell_key is not None:
+			# first run key that shares
+			track_run_key = (
+				self.CellData.query('cell_key == @cell_key')
+					.index
+					.get_level_values('run_key')[0]
+				)
+		elif run_key is None:
+			assert None not in [experiment, unit], (
+				'If not providing either cell_key or run_key, '
+				'must provide experiment and unit information'
+				)
+
+			experiment, unit = str(experiment), str(unit)
+
+			track_run_key = (
+				self.CellData.query('experiment == @experiment and unit == @unit')
+					.index
+					.get_level_values('run_key')[0]
+				)
+
+		else:
+			track_run_key = run_key
+
+		assert hasattr(self, 'TrackDirectory'), (
+			'Project has no TrackDirectory.  Create with self.genTrackDirectory()'
+			)
+		track_path_obj = self.TrackDirectory[track_run_key]
+
+		assert track_path_obj is not None, (
+			f'No path to a track object allocated for this unit {track_run_key}.\n '
+			f'The current entry in self.CellData is {self.CellData.query("run_key==@track_run_key").track.values[0]}\n '
+			'Maybe generate the directory again with self.genTrackDirectory()'
+			)
+
+		track_obj = hermes.loadTrack(track_path_obj['abs_path'])
+
+		return track_obj
+
+
+	def getNBTempPath(self, run_key = None, experiment = None, unit = None, run = None):
+
+		if run_key is None:
+			assert None not in [experiment, unit, run], (
+				'Without run_key, need experiment, unit and run'
+				)
+			experiment, unit, run = str(experiment), str(unit), str(run)
+
+			# Get first run key that match the exp, unit and run
+			# As templating notebooks are specific to exp, unit and run, it is irrelevant
+			# what cell number we pull out here.
+			# Though the NB paths are recorded per run key, and each run key records the cell
+			# number too, all cells of the same exp,unit and run are templated in the same NB
+			unit_run_key = (
+				self.CellData.query('experiment == @experiment and unit == @unit and run == @run')
+					.index
+					.get_level_values('run_key')[0]
+				)
+		else:
+			unit_run_key = run_key
+
+		assert hasattr(self, 'NBTempDirectory'), (
+			'Project does not have a NBTempDirectory.  Create with self.genNBDirectory()'
+			)
+
+		nb_path_obj = self.NBTempDirectory[unit_run_key]
+
+		assert nb_path_obj is not None, (
+			f'No path object for a templating notebook for this unit {unit_run_key}.\n'
+			'Maybe generate the directory again with self.genNBDirectory()'
+			)
+
+		return nb_path_obj
+
+
+	def getNBAnalPath(self, run_key = None, experiment = None, unit = None):
+
+		if run_key is None:
+			assert None not in [experiment, unit], (
+				'Without run_key, need experiment, unit and run'
+				)
+			experiment, unit = str(experiment), str(unit)
+
+			# Get first run key that match the exp, unit
+			# As analysis notebooks are specific to exp, unit, it is irrelevant
+			# what cell and/or run number we pull out here.
+			# Though the NB paths are recorded per run key, and each run key records the cell
+			# number too, all cells of the same exp,unit are templated in the same NB
+			unit_key = (
+				self.CellData.query('experiment == @experiment and unit == @unit')
+					.index
+					.get_level_values('run_key')[0]
+				)
+		else:
+			unit_key = run_key
+
+		assert hasattr(self, 'NBTempDirectory'), (
+			'Project does not have a NBTempDirectory.  Create with self.genNBDirectory()'
+			)
+
+		nb_path_obj = self.NBAnalDirectory[unit_key]
+
+		assert nb_path_obj is not None, (
+			f'No path object for a templating notebook for this unit {unit_key}.\n'
+			'Maybe generate the directory again with self.genNBDirectory()'
+			)
+
+		return nb_path_obj
+
+
+
+	def getNBPath(self, nb_type = None, run_key = None, cell_key = None, experiment = None, unit = None):
+
+		pass
 
 
 
