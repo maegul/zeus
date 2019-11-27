@@ -946,7 +946,7 @@ def loadTrack(file_path):
 		file path of the pickled file	
 	'''
 
-	assert isinstance(file_path, str), 'File path must be a string'
+	# assert isinstance(file_path, str), 'File path must be a string'
 
 	with open(file_path, 'rb') as f:
 		return pickle.load(f)

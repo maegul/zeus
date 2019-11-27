@@ -210,7 +210,7 @@ def load(file_path):
 	file_path : string
 		File path of the pickled file to be unpickled
 	"""
-	assert type(file_path) == str, 'File_path must be a string'
+	# assert type(file_path) == str, 'File_path must be a string'
 	
 	with open(file_path, 'rb') as f:
 		return pickle.load(f)
