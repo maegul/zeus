@@ -569,7 +569,14 @@ class Athena:
 		))
 
 
+	# > Directories and retrieval
+
 	def genThemisDirectory(self):
+		'''
+		Generate directory of themis objects in project folder
+
+		Add to project as self.ThemisDirectory
+		'''
 
 		directory = hermes.mk_themis_files_directory(self)
 
@@ -577,6 +584,11 @@ class Athena:
 
 
 	def genTrackDirectory(self):
+		'''
+		Generate directory of track objects in project folder
+
+		Add to project as self.TrackDirectory
+		'''
 
 		directory = hermes.mk_track_files_directory(self)
 
@@ -584,6 +596,11 @@ class Athena:
 
 
 	def genNBDirectory(self, nb_type=None):
+		'''
+		Generate directory of notebooks of type nb_type (see hermes for specifics on directory)
+
+		Add to project as self.NB<nb_type>Directory
+		'''
 
 		nb_type_opts = ['temp', 'anal']
 		assert nb_type in nb_type_opts, f'nb_type must be one of {nb_type_opts}'
@@ -594,7 +611,28 @@ class Athena:
 			self.NBAnalDirectory = hermes.mk_nb_files_directory(self, nb_type=nb_type)
 
 
+	def genAllDirectories(self):
+
+		self.genThemisDirectory()
+		self.genTrackDirectory()
+		self.genNBDirectory(nb_type='anal')
+		self.genNBDirectory(nb_type='temp')
+
+		self.save()
+
+
 	def assignNBTemplateDir(self, force=False):
+		'''
+		Find and assign the path of NB Templates in project root folder
+
+		Search is done through hermes helper function
+
+		Path of directory is assigned to self._NBTemplateDir.
+		Path is a dictionary with abs_path and rel_path as keys
+
+		if force is True, the directory will be searched for again and will override
+		any existing data at self._NBTemplateDir
+		'''
 
 		if not hasattr(self, '_NBTemplateDir') or force:
 			template_dir = hermes.find_project_nb_templates(self)
