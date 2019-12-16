@@ -1130,7 +1130,7 @@ class Hephaistos:
 
 
 
-	def save(self, file_name = None):
+	def save(self, file_name = None, overwrite=False):
 		'''
 		pickle the unit
 		'''
@@ -1142,6 +1142,10 @@ class Hephaistos:
 			file_name = self.Data_path.parent / pthl.Path(file_name).with_suffix('.pkl')
 
 		self.SavePath = file_name.absolute()
+
+		assert not self.SavePath.exists() or overwrite, (
+			f'Save path exists already, need to elect to overwrite or change file_name or location of save'
+			)
 
 		temp_path = self.SavePath.with_suffix(file_name.suffix + '.tmp')
 		
