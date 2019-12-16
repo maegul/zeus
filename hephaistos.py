@@ -9,6 +9,7 @@ Hephaistos -> god of craft and metalwork ... this is the hard work!
 import pathlib as pthl
 from pprint import pprint
 import pickle
+import inspect
 
 from . import spk2_mat_read as spkmr
 
@@ -57,12 +58,15 @@ def doc_string_add(inserted_func):
 
 
 
-def load(filename, tdc_refresh = False, print_state = True):
+def load(filename, tdc_refresh = False, raw_data_refresh = False, print_state = True):
 	with open(filename, 'rb') as f:
 		loadedUnit = pickle.load(f)
 
 	if tdc_refresh:
 		loadedUnit._tdc_refresh()
+
+	if raw_data_refresh:
+		loadedUnit._dataRefresh()
 
 	if print_state:
 		print('\n*****\n')
@@ -208,6 +212,55 @@ class Hephaistos:
 		# How manage paths?
 			# Want to be able to easily pull out containing folders
 
+	def _recordDataRead(self, frame, kwargs):
+		'''
+		Records parameters for the raw data reading process into an attribute of 
+		the Hephaistos object
+
+		Parameters
+		----
+		frame : frame
+			Output of inspect.currentframe() when run in relevant read function
+			ie, frame of the read function call
+		'''
+
+		self._data_read_params = {}
+
+		self._data_read_params['args'] = kwargs
+		self._data_read_params['read_function'] = frame.f_code.co_name
+
+
+	def _dataRefresh(self):
+		'''
+		Reloads the raw data
+
+		Intended for use when loading from pickle
+		'''
+
+		read_params = getattr(self, '_data_read_params', None)
+
+		# older instances of heph may not have data read params
+		# in such case, try without arguments each of the read function
+		# readBasicSpkMat is the more likely option
+
+		if not read_params:
+
+			print('\n*****\n'+
+				'no data read params found\n... trying with default params'+
+				'\n*****\n'
+				)
+
+			try:
+				self.readBasicSpkMat()
+			except:
+				self.readSpkMat()
+				print(f"Could not reload raw data from {self._absolute_paths['Data_path']}, without data_read_params")
+				raise
+
+		else:
+			getattr(self, read_params['read_function'])(**read_params['args'])
+
+
 	@funcTracker
 	@doc_string_add(spkmr.spk2MatRead.__init__)
 	def readSpkMat(self, **kwargs):
@@ -228,6 +281,8 @@ class Hephaistos:
 		self.MarkTimes = self.Dat.MarkTimes
 		self.MarkCodes = self.Dat.MarkCodes
 
+		self._recordDataRead(inspect.currentframe(), kwargs)
+
 	@funcTracker
 	@doc_string_add(spkmr.basicMatRead.__init__)
 	def readBasicSpkMat(self, **kwargs):
@@ -246,6 +301,8 @@ class Hephaistos:
 		# as self.Dat attribute when loading from pickled save file (as hdf5 not pickle-able)
 		self.MarkTimes = self.Dat.MarkTimes
 		self.MarkCodes = self.Dat.MarkCodes
+
+		self._recordDataRead(inspect.currentframe(), kwargs)
 
 
 	def writeWaveClusMat(self, channel = 'Ch1'):
