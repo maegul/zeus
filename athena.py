@@ -6,6 +6,7 @@ idx = pd.IndexSlice
 
 import pickle
 import inspect
+from pprint import pprint
 # import os
 # import glob
 # import copy
@@ -572,6 +573,26 @@ class Athena:
 
 	# > Directories and retrieval
 
+	def _register_directory(self, dir_key, dir):
+		'''
+		Record the creation or update of a directory
+
+		dir_key must be one of 'heph', 'themis', 'track', 'nb_temp', 'nb_anal'
+		'''
+
+		if not hasattr(self, '_directories'):
+			self._directories = {}
+
+		dir_key_options = [
+			'heph', 'themis', 'track', 'nb_temp', 'nb_anal'
+		]
+		assert dir_key in dir_key_options, (
+			f'dir_key ({dir_key}) must be one of {dir_key_options}'
+			)
+
+		self._directories[dir_key] = dir
+
+
 	def genHephDirectory(self):
 		'''
 		Generate a directory of hephaistos objects in the project directory
@@ -583,6 +604,8 @@ class Athena:
 
 		self.HephDirectory = directory
 
+		self._register_directory('heph', self.HephDirectory)
+
 	def genThemisDirectory(self):
 		'''
 		Generate directory of themis objects in project folder
@@ -593,6 +616,7 @@ class Athena:
 		directory = hermes.mk_themis_files_directory(self)
 
 		self.ThemisDirectory = directory
+		self._register_directory('themis', self.ThemisDirectory)
 
 
 	def genTrackDirectory(self):
@@ -605,7 +629,7 @@ class Athena:
 		directory = hermes.mk_track_files_directory(self)
 
 		self.TrackDirectory = directory
-
+		self._register_directory('track', self.TrackDirectory)
 
 	def genNBDirectory(self, nb_type=None):
 		'''
@@ -619,8 +643,10 @@ class Athena:
 
 		if nb_type == 'temp':
 			self.NBTempDirectory = hermes.mk_nb_files_directory(self, nb_type=nb_type)
+			self._register_directory('nb_temp', self.NBTempDirectory)
 		if nb_type == 'anal':
 			self.NBAnalDirectory = hermes.mk_nb_files_directory(self, nb_type=nb_type)
+			self._register_directory('nb_anal', self.NBAnalDirectory)
 
 
 	def genAllDirectories(self):
@@ -919,6 +945,32 @@ class Athena:
 				)
 
 		return naked_keys
+
+	def getKeyDirectory(self, run_key = None, print_data=False):
+		'''
+		Retrun list of all paths from all directories for specified run_key
+		'''
+
+		assert hasattr(self, '_directories'), (
+			f'project must have generated directories (no "_directories" attribute).  run self.genAllDirectories() to generate'
+			)
+
+		assert self.CellData.index.isin([run_key], level=1).sum() > 0, (
+			f'Run key ({run_key}) not in cell data, maybe refresh directories or check run_key'
+			)
+
+		run_dir_data = {
+			k: d[run_key]
+			for k,d in self._directories.items()
+		}
+
+		if print_data:
+			pprint(run_dir_data)
+
+		return run_dir_data
+
+
+
 
 
 
