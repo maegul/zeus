@@ -612,6 +612,73 @@ def mk_track_files_directory(proj, return_strays=False):
 		return run_file_paths
 
 
+
+def mk_heph_files_directory(proj, return_strays = False):
+	'''
+	Generates directory of hephaistos object files within the passed project
+
+	Relies primarily on the themis directory in proj 
+	(which must be generated before running this function)
+	by using the hephaistos paths stored in the themis objects
+	to provide the hephaistos paths
+
+	Parameters
+	----
+	proj : athena.Athena obj
+		The project for which hephaistos directory is to be generated
+		Must have a themis directory
+
+	return_strays : bool
+		if True, all hephaistos objects are retrieved from the project path
+		and those which are not referred to by a themis object in the themis directory
+		are reuturned as the second return object
+	'''
+
+	assert hasattr(proj, 'ThemisDirectory'), (
+		'project must have a themis directory at proj.ThemisDirectory',
+		'Generate themis directory with proj.genThemisDirectory()'
+		)
+
+	if return_strays:
+		# Find all heph files in proj path
+		all_proj_heph_files = []
+		for root, dirs, files in os.walk(proj._absolute_paths['path']):
+			matches = fnmatch.filter(files, 'Heph_*.pkl')
+			matches = [os.path.join(root, m) for m in matches]
+			all_proj_heph_files.extend(matches)
+
+
+	runs = proj.ThemisDirectory.keys()
+
+	heph_files = {k: None for k in runs}
+
+	for r in runs:
+		if proj.ThemisDirectory[r] is None:
+			continue
+		else:
+			themis_obj = proj.getThemisObj(run_key = r)
+
+			paths = {}
+			# presumes that the path sotred at Data_path in themis is absolute (true at time of writing)
+			paths['abs_path'] = themis_obj.Data_path
+			paths['rel_path'] = themis_obj.Data_path.relative_to(proj._absolute_paths['path'])
+
+			if return_strays:
+				# use relative path to look for instance in discovered heph files, and pop
+				all_proj_heph_files = [
+					f for f
+					in all_proj_heph_files
+					if f != str(paths['abs_path'])	
+				]
+
+			heph_files[r] = paths
+
+	if return_strays:
+		return heph_files, all_proj_heph_files
+	else:
+		return heph_files
+
+
 def show_info(d, spec_keys=None):
 	'''
 	spec_keys : list
@@ -656,8 +723,7 @@ def mk_cell_ID(experiment = None, unit = None, cell = None, run = None):
 
 
 def mk_cell_key(experiment = None, unit = None, cell = None, run = None,
-				pureCellKey = False
-	):
+				pureCellKey = False):
 
 	assert type(pureCellKey) == bool, 'pureCellKey must be boolean'
 

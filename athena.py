@@ -571,6 +571,17 @@ class Athena:
 
 	# > Directories and retrieval
 
+	def genHephDirectory(self):
+		'''
+		Generate a directory of hephaistos objects in the project directory
+
+		Added to project as self.HephDirectory
+		'''
+
+		directory = hermes.mk_heph_files_directory(self)
+
+		self.HephDirectory = directory
+
 	def genThemisDirectory(self):
 		'''
 		Generate directory of themis objects in project folder
@@ -617,6 +628,7 @@ class Athena:
 		self.genTrackDirectory()
 		self.genNBDirectory(nb_type='anal')
 		self.genNBDirectory(nb_type='temp')
+		self.genHephDirectory()
 
 		self.save()
 
@@ -645,6 +657,64 @@ class Athena:
 
 		else:
 			print(f'NB Template already assiged as {self._NBTemplateDir["abs_path"]}')
+
+
+	def getHephPath(self, cell_key = None, run_key = None, 
+		experiment = None, unit = None, run = None):
+
+		'''
+		Returns a heph path using either a run/cell key or cell metadata
+
+		No actual heph object is returned because heph objects are distinct enough
+		with enough memory and path details involved in use and implementation that
+		they actual loading and using and importing is left to the user as a discretionary
+		exercise
+
+		parameters
+		----
+		cell_key, run_key : str
+			Either a run or cell key.
+			They are interchangeable as the heph objects are experiment, unit and run specific
+			any information such as cell irrelevant
+
+		experiment, unit, run : str
+			If cell_key, run_key is None, these must be provided.  Else, they are redundant.
+		'''
+
+		if cell_key is not None:
+			# first run key that shares
+			heph_run_key = (
+				self.CellData.query('cell_key == @cell_key')
+					.index
+					.get_level_values('run_key')[0]
+				)
+		elif run_key is None:
+			assert None not in [experiment, unit, run], (
+				'If not providing either cell_key or run_key, '
+				'must provide experiment, run and unit information'
+				)
+
+			experiment, unit, run = str(experiment), str(unit), str(run)
+
+			heph_run_key = (
+				self.CellData.query('experiment == @experiment and unit == @unit and run == @run')
+					.index
+					.get_level_values('run_key')[0]
+				)
+
+		else:
+			heph_run_key = run_key
+
+		assert hasattr(self, 'HephDirectory'), (
+			'project must have a heph directory.  Create with self.genHephDirectory'
+			)
+
+		heph_path_obj = self.HephDirectory[heph_run_key]
+
+		return heph_path_obj
+
+	
+
 
 
 	def getThemisObj(self, 
